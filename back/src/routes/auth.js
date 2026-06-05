@@ -101,6 +101,42 @@ router.post('/google', async (req, res) => {
   }
 });
 
+// 구글 리디렉션 방식 (기존 토큰 방식 아래에 추가)
+router.post('/google/redirect', async (req, res) => {
+  const { code } = req.body;
+  if (!code) return res.status(400).json({ message: '인가 코드가 없습니다.' });
+
+  try {
+    const tokenResponse = await axios.post(
+      'https://oauth2.googleapis.com/token',
+      qs.stringify({
+        grant_type: 'authorization_code',
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: 'http://localhost:5173/login',
+        code,
+      }),
+      { headers: { 'content-type': 'application/x-www-form-urlencoded' } }
+    );
+
+    const accessToken = tokenResponse.data.access_token;
+    const userResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    const googleId = userResponse.data.id;
+    const email = userResponse.data.email;
+    const nickname = userResponse.data.name || `구글유저_${googleId}`;
+    const profileImage = userResponse.data.picture || '';
+
+    await handleSocialLogin(res, 'google', googleId, email, nickname, profileImage);
+
+  } catch (error) {
+    console.error('구글 리디렉션 로그인 에러:', error.response?.data || error.message);
+    res.status(500).json({ message: '구글 로그인 실패' });
+  }
+});
+
 // 네이버 로그인
 router.post('/naver', async (req, res) => {
   const { code, state } = req.body;

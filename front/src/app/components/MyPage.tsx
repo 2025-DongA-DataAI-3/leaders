@@ -274,11 +274,29 @@ export default function MyPage() {
     navigate("/login");
   };
 
-  const handleDeleteAccount = () => {
-    localStorage.clear();
-    navigate("/login");
-    setShowDeleteConfirm(false);
-  };
+const handleDeleteAccount = async () => {
+  try {
+    const user_id = localStorage.getItem("user_id");
+
+    const res = await fetch('http://localhost:5000/api/auth/delete', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id }),
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      localStorage.clear();
+      navigate("/login");
+      setShowDeleteConfirm(false);
+    } else {
+      alert('회원탈퇴 실패: ' + data.message);
+    }
+  } catch (err) {
+    console.error('회원탈퇴 실패:', err);
+    alert('회원탈퇴 중 오류가 발생했습니다.');
+  }
+};
 
   const handleResetOnboarding = () => {
     localStorage.removeItem("hasSeenOnboarding");

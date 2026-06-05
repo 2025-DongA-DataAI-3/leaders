@@ -59,6 +59,17 @@ app.get('/api/trends/keywords/:keyword_id', async (req, res) => {
   }
 });
 
+// 회원탈퇴
+app.delete('/api/auth/delete', async (req, res) => {
+  try {
+    const { user_id } = req.body;
+    await pool.query('DELETE FROM users WHERE user_id = ?', [user_id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 const PORT = process.env.SERVER_PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 백엔드 서버가 포트 ${PORT}에서 작동 중입니다!`);

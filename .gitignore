@@ -5,8 +5,13 @@ __pycache__/
 
 # 환경변수 (중요! API 키 노출 방지)
 .env
-.env.local
-.env.production
+/ai/.env
+/back/.env
+/front/.env
+
+# 혹시 모를 모든 하위 디렉토리 대응
+**/.env
+**/.env.local
 
 # 빌드 결과물
 dist/

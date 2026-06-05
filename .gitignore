@@ -1,2 +1,28 @@
+# 의존성 폴더
 node_modules/
+__pycache__/
+*.pyc
+
+# 환경변수 (중요! API 키 노출 방지)
 .env
+.env.local
+.env.production
+
+# 빌드 결과물
+dist/
+build/
+
+# 캐시
+.cache/
+*.egg-info/
+
+# 로그
+*.log
+npm-debug.log*
+
+# OS 파일
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/

@@ -7,7 +7,7 @@ export default function Signup() {
   const [nickname, setNickname] = useState<string>('');
   const [email, setEmail] = useState<string>('');
 
-  // 🆕 가입하기 버튼을 눌렀을 때 백엔드 4000번 가입 주소로 쏴주는 명품 함수!
+  // 🆕 가입하기 버튼을 눌렀을 때 백엔드 5000번 가입 주소로 쏴주는 명품 함수!
   const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -18,7 +18,7 @@ export default function Signup() {
 
     try {
       // ⭐ 백엔드 server.js의 회원가입 창구(/api/signup) 포트 4000번으로 정확히 조준!!!
-      const response = await fetch("http://localhost:4000/api/signup", {
+      const response = await fetch("http://localhost:5000/api/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // 은혜님의 소중한 가입 상자를 이쁘게 포장해서 백엔드로 발사!
@@ -40,7 +40,7 @@ export default function Signup() {
       }
     } catch (error) {
       console.error("회원가입 에러:", error);
-      alert("서버 연결 실패 😭 4000번 백엔드 서버가 잘 켜져 있는지 확인하세요!");
+      alert("서버 연결 실패 5000번 백엔드 서버가 잘 켜져 있는지 확인하세요!");
     }
   };
 

@@ -16,7 +16,7 @@ export default function Login() {
 
     try {
       // ⭐ [주소 세탁] 은혜님이 띄워놓은 4000번 백엔드 서버의 로그인 엔드포인트로 정확히 조준!!!
-      const response = await fetch("http://localhost:4000/api/login", {
+      const response = await fetch("http://localhost:5000/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // 리액트의 아이디, 비번 바구니를 이쁘게 포장해서 백엔드로 발사!
@@ -41,7 +41,7 @@ export default function Login() {
       }
     } catch (error) {
       console.error("로그인 에러:", error);
-      alert("서버 연결 실패 😭 4000번 백엔드(server.js)가 켜져 있는지 확인하세요!");
+      alert("서버 연결 실패 5000번 백엔드(server.js)가 켜져 있는지 확인하세요!");
     }
   };
 

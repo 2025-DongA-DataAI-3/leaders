@@ -1,285 +1,136 @@
-import React from 'react'
-import { useState } from "react";
-import { useNavigate, Link } from "react-router";
-import { Activity, Eye, EyeOff } from "lucide-react";
-
-// ================= [로컬 컴포넌트 시작: TrendInput] =================
-interface TrendInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
-}
-
-const TrendInput = React.forwardRef<HTMLInputElement, TrendInputProps>(
-  ({ className, label, type, ...props }, ref) => {
-    return (
-      <div>
-        {label && (
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            {label}
-          </label>
-        )}
-        <input
-          type={type}
-          className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00C9A7] focus:border-transparent ${className || ""}`}
-          ref={ref}
-          {...props}
-        />
-      </div>
-    );
-  }
-);
-TrendInput.displayName = "TrendInput";
-// ================= [로컬 컴포넌트 끝: TrendInput] =================
-
-
-// ================= [로컬 컴포넌트 시작: TrendCheckbox] =================
-interface TrendCheckboxProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  labelNode: React.ReactNode;
-}
-
-const TrendCheckbox = React.forwardRef<HTMLInputElement, TrendCheckboxProps>(
-  ({ className, labelNode, ...props }, ref) => {
-    return (
-      <div className="flex items-start">
-        <input
-          type="checkbox"
-          className={`mt-1 w-4 h-4 text-[#00C9A7] border-gray-300 rounded focus:ring-[#00C9A7] ${className || ""}`}
-          ref={ref}
-          {...props}
-        />
-        <label className="ml-2 text-sm text-gray-700">
-          {labelNode}
-        </label>
-      </div>
-    );
-  }
-);
-TrendCheckbox.displayName = "TrendCheckbox";
-// ================= [로컬 컴포넌트 끝: TrendCheckbox] =================
-
-
-// ================= [로컬 컴포넌트 시작: TrendButton] =================
-interface TrendButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {}
-
-const TrendButton = React.forwardRef<HTMLButtonElement, TrendButtonProps>(
-  ({ className, children, ...props }, ref) => {
-    return (
-      <button
-        className={`w-full px-6 py-3 bg-[#00C9A7] text-white rounded-lg hover:bg-[#00A88E] transition-colors font-medium ${className || ""}`}
-        ref={ref}
-        {...props}
-      />
-    );
-  }
-);
-TrendButton.displayName = "TrendButton";
-// ================= [로컬 컴포넌트 끝: TrendButton] =================
-
+import React, { useState } from 'react';
 
 export default function Signup() {
-  const navigate = useNavigate();
-  const [showPassword, setShowPassword] = useState(false);
-  const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    passwordConfirm: "",
-    name: "",
-    agreeTerms: false,
-    agreePrivacy: false,
-  });
+  // 🆕 회원가입 입력값들을 안전하게 보관할 소중한 바구니 4형제
+  const [userId, setUserId] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [nickname, setNickname] = useState<string>('');
+  const [email, setEmail] = useState<string>('');
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData({
-      ...formData,
-      [name]: type === "checkbox" ? checked : value,
-    });
-  };
-
-  const handleSignup = (e: React.FormEvent) => {
+  // 🆕 가입하기 버튼을 눌렀을 때 백엔드 4000번 가입 주소로 쏴주는 명품 함수!
+  const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // 유효성 검사
-    if (!formData.email || !formData.password || !formData.passwordConfirm || !formData.name) {
-      alert("모든 필수 항목을 입력해주세요.");
+    if (!userId || !password || !nickname || !email) {
+      alert("모든 입력창을 빈칸 없이 꽉꽉 채워주세요쿵야!!! 😡");
       return;
     }
 
-    if (formData.password !== formData.passwordConfirm) {
-      alert("비밀번호가 일치하지 않습니다.");
-      return;
+    try {
+      // ⭐ 백엔드 server.js의 회원가입 창구(/api/signup) 포트 4000번으로 정확히 조준!!!
+      const response = await fetch("http://localhost:4000/api/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // 은혜님의 소중한 가입 상자를 이쁘게 포장해서 백엔드로 발사!
+        body: JSON.stringify({ 
+          userId: userId, 
+          password: password, 
+          nickname: nickname, 
+          email: email 
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(data.message || "회원가입이 완벽하게 대성공했습니다! 🎉");
+        window.location.href = "/"; // 가입 성공하면 기분 좋게 로그인 창으로 자동 이동!
+      } else {
+        alert(data.message || "회원가입 실패! 이미 있는 아이디인지 확인하세요 😭");
+      }
+    } catch (error) {
+      console.error("회원가입 에러:", error);
+      alert("서버 연결 실패 😭 4000번 백엔드 서버가 잘 켜져 있는지 확인하세요!");
     }
-
-    if (formData.password.length < 8) {
-      alert("비밀번호는 8자 이상이어야 합니다.");
-      return;
-    }
-
-    if (!formData.agreeTerms || !formData.agreePrivacy) {
-      alert("필수 약관에 동의해주세요.");
-      return;
-    }
-
-    // 회원가입 처리
-    localStorage.setItem("isLoggedIn", "true");
-    localStorage.setItem("loginProvider", "email");
-    localStorage.setItem("userName", formData.name);
-
-    alert("회원가입이 완료되었습니다!");
-    navigate("/");
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#E0F7F3] to-white flex items-center justify-center px-4 py-8">
-      <div className="max-w-md w-full">
-        <div className="bg-white rounded-2xl shadow-xl p-10">
-          {/* 로고 */}
-          <div className="text-center mb-8">
-            <Link to="/login" className="inline-block">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-[#00C9A7] mb-4">
-                <Activity className="w-9 h-9 text-white" />
-              </div>
-            </Link>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">회원가입</h1>
-            <p className="text-gray-600 text-sm">
-              TrendPilot과 함께 트렌드를 분석하세요
-            </p>
-          </div>
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      alignItems: "center",
+      minHeight: "100vh",
+      backgroundColor: "#f8f9fa",
+      padding: "20px"
+    } as React.CSSProperties}>
+      
+      {/* 흰색 카드 형태의 회원가입 박스 */}
+      <div style={{
+        backgroundColor: "white",
+        padding: "40px 30px",
+        borderRadius: "16px",
+        boxShadow: "0 4px 16px rgba(0,0,0,0.05)",
+        width: "360px",
+        textAlign: "center"
+      } as React.CSSProperties}>
+        
+        {/* 타이틀 로고 */}
+        <div style={{ marginBottom: "25px" }}>
+          <span style={{ fontSize: "40px" }}>📝</span>
+          <h2 style={{ margin: "10px 0 5px 0", fontWeight: "bold", color: "#111" }}>TrendPilot</h2>
+          <p style={{ margin: 0, color: "#666", fontSize: "14px" }}>새로운 계정 만들기</p>
+        </div>
 
-          {/* 회원가입 폼 */}
-          <form onSubmit={handleSignup} className="space-y-4">
-            {/* 이름 */}
-            <div>
-              <TrendInput
-                label="이름"
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                placeholder="홍길동"
-                required
-              /> {/* ★ 기존 구형 input에서 로컬 컴포넌트(TrendInput)로 치환됨 */}
-            </div>
+        {/* 🧡 은혜님의 꽉 찬 회원가입 폼 주머니 */}
+        <form onSubmit={handleSignupSubmit} style={{ display: "flex", flexDirection: "column", gap: "10px" } as React.CSSProperties}>
+          <input
+            type="text"
+            placeholder="사용할 아이디 입력"
+            value={userId}
+            onChange={(e) => setUserId(e.target.value)}
+            style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #ddd" } as React.CSSProperties}
+          />
+          <input
+            type="password"
+            placeholder="비밀번호 입력"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #ddd" } as React.CSSProperties}
+          />
+          <input
+            type="text"
+            placeholder="닉네임 입력 (예: 트렌드쿠키)"
+            value={nickname}
+            onChange={(e) => setNickname(e.target.value)}
+            style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #ddd" } as React.CSSProperties}
+          />
+          <input
+            type="email"
+            placeholder="이메일 주소 입력"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #ddd" } as React.CSSProperties}
+          />
+          
+          <button
+            type="submit"
+            style={{
+              width: "100%",
+              height: "45px",
+              backgroundColor: "#00C7ae",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontSize: "15px",
+              fontWeight: "bold",
+              cursor: "pointer",
+              marginTop: "10px"
+            } as React.CSSProperties}
+          >
+            가입하기 🎉
+          </button>
+        </form>
 
-            {/* 이메일 */}
-            <div>
-              <TrendInput
-                label="이메일"
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                placeholder="example@email.com"
-                required
-              /> {/* ★ 기존 구형 input에서 로컬 컴포넌트(TrendInput)로 치환됨 */}
-            </div>
-
-            {/* 비밀번호 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                비밀번호
-              </label>
-              <div className="relative">
-                <TrendInput
-                  type={showPassword ? "text" : "password"}
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  placeholder="8자 이상 입력하세요"
-                  className="pr-12"
-                  required
-                /> {/* ★ 기존 구형 input에서 로컬 컴포넌트(TrendInput)로 치환됨 */}
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* 비밀번호 확인 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                비밀번호 확인
-              </label>
-              <div className="relative">
-                <TrendInput
-                  type={showPasswordConfirm ? "text" : "password"}
-                  name="passwordConfirm"
-                  value={formData.passwordConfirm}
-                  onChange={handleInputChange}
-                  placeholder="비밀번호를 다시 입력하세요"
-                  className="pr-12"
-                  required
-                /> {/* ★ 기존 구형 input에서 로컬 컴포넌트(TrendInput)로 치환됨 */}
-                <button
-                  type="button"
-                  onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                >
-                  {showPasswordConfirm ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* 약관 동의 */}
-            <div className="pt-2 space-y-3">
-              <TrendCheckbox
-                name="agreeTerms"
-                checked={formData.agreeTerms}
-                onChange={handleInputChange}
-                required
-                labelNode={
-                  <>
-                    <a href="#" className="text-[#00C9A7] hover:underline">
-                      이용약관
-                    </a>
-                    에 동의합니다 (필수)
-                  </>
-                }
-              /> {/* ★ 기존 구형 input checkbox에서 로컬 컴포넌트(TrendCheckbox)로 치환됨 */}
-
-              <TrendCheckbox
-                name="agreePrivacy"
-                checked={formData.agreePrivacy}
-                onChange={handleInputChange}
-                required
-                labelNode={
-                  <>
-                    <a href="#" className="text-[#00C9A7] hover:underline">
-                      개인정보처리방침
-                    </a>
-                    에 동의합니다 (필수)
-                  </>
-                }
-              /> {/* ★ 기존 구형 input checkbox에서 로컬 컴포넌트(TrendCheckbox)로 치환됨 */}
-            </div>
-
-            {/* 회원가입 버튼 */}
-            <TrendButton type="submit" className="mt-6">
-              회원가입
-            </TrendButton> {/* ★ 기존 구형 button에서 로컬 컴포넌트(TrendButton)로 치환됨 */}
-          </form>
-
-          {/* 로그인 링크 */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              이미 계정이 있나요?{" "}
-              <Link to="/login" className="text-[#00C9A7] hover:underline font-medium">
-                로그인
-              </Link>
-            </p>
-          </div>
+        {/* 로그인 창으로 돌아가는 순정 링크 */}
+        <div style={{ marginTop: "20px", fontSize: "13px", color: "#666" }}>
+          이미 계정이 있으신가요?{" "}
+          <a 
+            href="/" 
+            style={{ color: "#00C7ae", fontWeight: "bold", cursor: "pointer", textDecoration: "underline" }}
+          >
+            로그인하러 가기
+          </a>
         </div>
       </div>
     </div>

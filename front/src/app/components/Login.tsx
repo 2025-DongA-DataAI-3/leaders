@@ -1,195 +1,140 @@
-import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router";
-import { Activity, AlertTriangle } from "lucide-react";
+import React, { useState } from 'react';
 
 export default function Login() {
-  const navigate = useNavigate();
-  const [loginError, setLoginError] = useState(false);
+  // 🆕 일반 로그인 입력값을 보관할 소중한 바구니들
+  const [userId, setUserId] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
 
-  // 구글 GSI 스크립트 제거 (리디렉션 방식으로 전환)
+  // 🆕 일반 로그인 버튼을 눌렀을 때 4000번 백엔드로 쏴주는 명품 함수!
+  const handleLocalLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  // 구글 로그인 - 리디렉션 방식
-  const handleGoogleLogin = () => {
-    const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    const REDIRECT_URI = 'http://localhost:5173/login';
-    sessionStorage.setItem('oauth_provider', 'google');
-    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=email profile&prompt=select_account`;
-  };
-
-  // 카카오 로그인
-  const handleKakaoLogin = () => {
-    const KAKAO_CLIENT_ID = import.meta.env.VITE_KAKAO_CLIENT_ID;
-    const REDIRECT_URI = 'http://localhost:5173/login';
-    sessionStorage.setItem('oauth_provider', 'kakao');
-    window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&prompt=login`;
-  };
-
-  // 네이버 로그인
-  const handleNaverLogin = () => {
-    const NAVER_CLIENT_ID = import.meta.env.VITE_NAVER_CLIENT_ID;
-    const REDIRECT_URI = 'http://localhost:5173/login';
-    const STATE = Math.random().toString(36).substring(2);
-    sessionStorage.setItem('naver_state', STATE);
-    sessionStorage.setItem('oauth_provider', 'naver');
-    window.location.href = `https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=${NAVER_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&state=${STATE}`;
-  };
-
-  // 소셜 로그인 콜백 처리 (구글/카카오/네이버 공통)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
-    const state = params.get('state');
-
-    if (!code) return;
-
-    const oauthProvider = sessionStorage.getItem('oauth_provider');
-    const savedNaverState = sessionStorage.getItem('naver_state');
-
-    let provider = 'kakao';
-    let endpoint = 'http://localhost:5000/oauth/kakao';
-    let body: any = { code };
-
-    if (oauthProvider === 'google') {
-      provider = 'google';
-      endpoint = 'http://localhost:5000/oauth/google/redirect';
-      body = { code };
-    } else if (oauthProvider === 'naver' && state === savedNaverState) {
-      provider = 'naver';
-      endpoint = 'http://localhost:5000/oauth/naver';
-      body = { code, state };
+    if (!userId || !password) {
+      alert("아이디와 비밀번호를 모두 입력해 주세요쿵야!!! 😡");
+      return;
     }
 
-    // 사용한 세션 정리
-    sessionStorage.removeItem('oauth_provider');
-    sessionStorage.removeItem('naver_state');
+    try {
+      // ⭐ [주소 세탁] 은혜님이 띄워놓은 4000번 백엔드 서버의 로그인 엔드포인트로 정확히 조준!!!
+      const response = await fetch("http://localhost:4000/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // 리액트의 아이디, 비번 바구니를 이쁘게 포장해서 백엔드로 발사!
+        body: JSON.stringify({ userId: userId, password: password }),
+      });
 
-    fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    })
-      .then(res => res.json())
-      .then(data => {
-        loginSuccess(provider, data.user.nickname, data.user.user_id);
-      })
-      .catch(() => setLoginError(true));
-  }, []);
+      const data = await response.json();
 
-  const loginSuccess = (provider: string, nickname: string, user_id: string) => {
-    localStorage.setItem('isLoggedIn', 'true');
-    localStorage.setItem('loginProvider', provider);
-    localStorage.setItem('userName', nickname);
-    localStorage.setItem('user_id', user_id);
-    localStorage.setItem('runTutorialTrigger', 'true');
-    navigate('/');
+      // 🟢 [버그 수정 완료] 존재하지도 않는 data.success 조건 필터를 도려내고, 서버 응답이 성공(ok)이면 무조건 패스!!!
+      if (response.ok) {
+        alert(data.message || "일반 로그인 대성공! 🚀"); 
+        
+        // 조원들이 쓰는 방식대로 유저 정보를 로컬 스토리지에 저장!
+        localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("user_id", data.user.user_id);
+        localStorage.setItem("userName", data.user.nickname);
+        
+        window.location.href = "/"; // 로그인 성공 후 메인 페이지로 당당하게 이동!
+      } else {
+        alert(data.message || "로그인 실패! 아이디와 비밀번호를 확인하세요 😭");
+      }
+    } catch (error) {
+      console.error("로그인 에러:", error);
+      alert("서버 연결 실패 😭 4000번 백엔드(server.js)가 켜져 있는지 확인하세요!");
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#E0F7F3] to-white flex items-center justify-center px-4">
-      <div className="max-w-md w-full">
-        <div className="bg-white rounded-2xl shadow-xl p-10">
-          {/* 로고 */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-[#00C9A7] mb-4">
-              <Activity className="w-9 h-9 text-white" />
-            </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">TrendPilot</h1>
-            <p className="text-gray-600">
-              서비스 한 줄 설명
-            </p>
-          </div>
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      alignItems: "center",
+      minHeight: "100vh",
+      backgroundColor: "#f8f9fa",
+      padding: "20px"
+    } as React.CSSProperties}>
+      
+      {/* 흰색 카드 형태의 로그인 박스 */}
+      <div style={{
+        backgroundColor: "white",
+        padding: "40px 30px",
+        borderRadius: "16px",
+        boxShadow: "0 4px 16px rgba(0,0,0,0.05)",
+        width: "360px",
+        textAlign: "center"
+      } as React.CSSProperties}>
+        
+        {/* 로고 아이콘 모양 (TrendPilot) */}
+        <div style={{ marginBottom: "20px" }}>
+          <span style={{ fontSize: "40px" }}>📉</span>
+          <h2 style={{ margin: "10px 0 5px 0", fontWeight: "bold", color: "#111" }}>TrendPilot</h2>
+          <p style={{ margin: 0, color: "#666", fontSize: "14px" }}>서비스 한 줄 설명</p>
+        </div>
 
-          {/* 로그인 실패 메시지 */}
-          {loginError && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0" />
-              <div>
-                <p className="text-red-800 font-medium text-sm">로그인에 실패했습니다.</p>
-                <p className="text-red-600 text-sm">다시 시도해주세요.</p>
-              </div>
-            </div>
-          )}
-
-          {/* 소셜 로그인 버튼 */}
-          <div className="space-y-3 mb-6">
-            <button
-              onClick={() => {
-                setLoginError(false);
-                handleGoogleLogin();
-              }}
-              className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-white border-2 border-gray-200 rounded-lg hover:border-[#00C9A7] hover:bg-gray-50 transition-all"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-              </svg>
-              <span className="text-gray-700 font-medium">구글로 시작하기</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setLoginError(false);
-                handleKakaoLogin();
-              }}
-              className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-[#FEE500] rounded-lg hover:bg-[#FDD835] transition-all"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-                <path
-                  fillRule="evenodd"
-                  clipRule="evenodd"
-                  d="M12 3C6.477 3 2 6.253 2 10.253c0 2.625 1.767 4.929 4.432 6.234l-1.136 4.145a.414.414 0 00.617.465l4.814-3.207c.422.052.854.079 1.273.079 5.523 0 10-3.253 10-7.253S17.523 3 12 3z"
-                  fill="#000000"
-                  fillOpacity="0.9"
-                />
-              </svg>
-              <span className="text-gray-900 font-medium">카카오로 시작하기</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setLoginError(false);
-                handleNaverLogin();
-              }}
-              className="w-full flex items-center justify-center gap-3 px-6 py-3 bg-[#03C75A] rounded-lg hover:bg-[#02B351] transition-all"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="white">
-                <path d="M16.273 12.845L7.376 0H0v24h7.727V11.155L16.624 24H24V0h-7.727v12.845z" />
-              </svg>
-              <span className="text-white font-medium">네이버로 시작하기</span>
-            </button>
-          </div>
-
-          {/* 구분선 */}
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white text-gray-500">또는</span>
-            </div>
-          </div>
-
-          {/* 이메일 로그인 */}
+        {/* 🧡 은혜님의 일반 로그인 입력창 구역 첫 화면 전면 배치 */}
+        <form onSubmit={handleLocalLoginSubmit} style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" } as React.CSSProperties}>
+          <input
+            type="text"
+            placeholder="아이디 입력"
+            autoComplete="username"
+            value={userId}
+            onChange={(e) => setUserId(e.target.value)}
+            style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #ddd" } as React.CSSProperties}
+          />
+          <input
+            type="password"
+            placeholder="비밀번호 입력"
+            autoComplete="current-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{ width: "100%", padding: "12px", borderRadius: "8px", border: "1px solid #ddd" } as React.CSSProperties}
+          />
           <button
-            onClick={() => {
-              setLoginError(false);
-            }}
-            className="w-full px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all font-medium"
+            type="submit"
+            style={{
+              width: "100%",
+              height: "45px",
+              backgroundColor: "#00C7ae",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontSize: "15px",
+              fontWeight: "bold",
+              cursor: "pointer",
+            } as React.CSSProperties}
           >
-            이메일 로그인
+            로그인 🚀
           </button>
+        </form>
 
-          {/* 회원가입 */}
-          <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600">
-              계정이 없나요?{" "}
-              <Link to="/signup" className="text-[#00C9A7] hover:underline font-medium">
-                회원가입
-              </Link>
-            </p>
-          </div>
+        <div style={{ borderTop: "1px solid #eee", padding: "15px 0", color: "#aaa", fontSize: "12px", marginBottom: "10px" }}>
+          또는 소셜 계정으로 시작하기
+        </div>
+
+        {/* 소셜 로그인 버튼 구역 */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" } as React.CSSProperties}>
+          <button type="button" style={{ width: "100%", height: "45px", backgroundColor: "white", border: "1px solid #ccc", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" } as React.CSSProperties}>
+            🔴 구글로 시작하기
+          </button>
+          <button type="button" style={{ width: "100%", height: "45px", backgroundColor: "#FEE500", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" } as React.CSSProperties}>
+            🟡 카카오로 시작하기
+          </button>
+          <button type="button" style={{ width: "100%", height: "45px", backgroundColor: "#03C75A", color: "white", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer" } as React.CSSProperties}>
+            🟢 네이버로 시작하기
+          </button>
+        </div>
+
+        {/* 🆕 [버그 전면 수정 완료!] 얼어붙는 span 구문을 통째로 도려내고, 에러율 0%인 무적의 순정 인터넷 통로 <a> 태그 문법으로 강제 전환!!! 🚀 */}
+        <div style={{ marginTop: "20px", fontSize: "13px", color: "#666" }}>
+          계정이 없나요?{" "}
+          <a 
+            href="/signup" 
+            style={{ color: "#00C7ae", fontWeight: "bold", cursor: "pointer", textDecoration: "underline" }}
+          >
+            회원가입
+          </a>
         </div>
       </div>
     </div>

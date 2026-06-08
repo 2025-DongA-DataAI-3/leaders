@@ -217,10 +217,10 @@ export default function KeywordMap() {
 
   return (
     <div className="min-h-screen bg-[#F5FFFE] py-8 px-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-8xl mx-auto">
 
         {/* 헤더 */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="flex items-center gap-2 mb-1">
             <Flame className="w-6 h-6" style={{ color: '#00C9A7' }} />
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">창업 트렌드 버블맵</h1>

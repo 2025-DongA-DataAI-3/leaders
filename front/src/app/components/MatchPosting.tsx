@@ -216,7 +216,7 @@ export default function MatchPosting() {
 
   return (
     <div className="min-h-screen py-8 px-6 bg-[#F5FFFE] text-gray-900">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-8xl mx-auto">
         {/* 페이지 타이틀 */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-1">추천 맞춤 공고</h1>

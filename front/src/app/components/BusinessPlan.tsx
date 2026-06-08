@@ -306,7 +306,7 @@ export default function BusinessPlan() {
 
       {/* 상단 타이틀 + 버튼 헤더 */}
       <div className="flex-shrink-0 px-8 pt-7 pb-5 bg-[#F5FFFE]">
-        <div className="mb-5">
+        <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 mb-1">사업계획서 작성</h1>
           <p className="text-sm text-gray-500">AI로 초안을 생성하거나 직접 내용을 입력하세요</p>
         </div>

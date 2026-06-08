@@ -53,6 +53,8 @@ const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 const DAYS_OF_WEEK  = ['일', '월', '화', '수', '목', '금', '토'];
 const STORAGE_KEY   = 'savedPrograms';
 
+// ── 로컬 컴포넌트 ──
+
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'success' | 'danger';
   children: ReactNode;
@@ -155,6 +157,8 @@ function Pagination({ currentPage, totalPages, onPageChange }: { currentPage: nu
   );
 }
 
+// ── 메인 컴포넌트 ──
+
 export default function MatchPosting() {
   const [viewMode, setViewMode]                 = useState<ViewMode>('list');
   const [savedPrograms, setSavedPrograms]       = useState<string[]>([]);
@@ -162,9 +166,10 @@ export default function MatchPosting() {
   const [searchKeyword, setSearchKeyword]       = useState('');
   const [filterCategory, setFilterCategory]     = useState('all');
   const [activeTab, setActiveTab]               = useState<'전체' | SupportType>('전체');
-  const [isNotificationOn, setIsNotificationOn] = useState(false);
+  const [isNotificationOn, setIsNotificationOn] = useState(false); // 초기값 false (꺼진 상태)
   const [isModalOpen, setIsModalOpen]           = useState(false);
   const [currentPage, setCurrentPage]           = useState(1);
+  const [showMyPosts, setShowMyPosts] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -182,13 +187,14 @@ export default function MatchPosting() {
   };
 
   const filteredPrograms = PROGRAMS.filter((p) => {
-    const matchesType     = activeTab === '전체' || p.supportType === activeTab;
-    const matchesCategory = filterCategory === 'all' || p.category === filterCategory;
-    const matchesSearch   =
-      p.title.toLowerCase().includes(searchKeyword.toLowerCase()) ||
-      p.agency.toLowerCase().includes(searchKeyword.toLowerCase());
-    return matchesType && matchesCategory && matchesSearch;
-  });
+  const matchesType     = activeTab === '전체' || p.supportType === activeTab;
+  const matchesCategory = filterCategory === 'all' || p.category === filterCategory;
+  const matchesSearch   =
+    p.title.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+    p.agency.toLowerCase().includes(searchKeyword.toLowerCase());
+  const matchesMy       = !showMyPosts || savedPrograms.includes(p.id); // 추가
+  return matchesType && matchesCategory && matchesSearch && matchesMy;
+});
 
   const ITEMS_PER_PAGE    = 5;
   const totalPages        = Math.ceil(filteredPrograms.length / ITEMS_PER_PAGE) || 1;
@@ -211,38 +217,90 @@ export default function MatchPosting() {
   return (
     <div className="min-h-screen py-8 px-6 bg-[#F5FFFE] text-gray-900">
       <div className="max-w-6xl mx-auto">
-
         {/* 페이지 타이틀 */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">지원 공고 추천</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">추천 맞춤 공고</h1>
           <p className="text-sm text-gray-500">당신의 창업 성향에 맞는 지원사업을 확인하세요</p>
         </div>
-
         {/* 검색/필터 카드 */}
         <Card className="mb-6 p-5">
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1">
-              <Input
-                placeholder="지원사업명 또는 주관기관 검색..."
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
-              />
+            
+            {/* 왼쪽 절반: 검색 + 카테고리 + 필터가이드 */}
+            <div className="flex gap-3 flex-1">
+              <div className="flex-1">
+                <Input
+                  placeholder="지원사업명 또는 주관기관 검색..."
+                  value={searchKeyword}
+                  onChange={(e) => setSearchKeyword(e.target.value)}
+                />
+              </div>
+              <div className="w-40">
+                <Select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  options={[
+                    { value: 'all',            label: '전체 카테고리' },
+                    { value: 'IT/소프트웨어',   label: 'IT/소프트웨어' },
+                    { value: '제조/생산',       label: '제조/생산' },
+                    { value: '유통/서비스',     label: '유통/서비스' },
+                    { value: '바이오/헬스케어', label: '바이오/헬스케어' },
+                    { value: '친환경/에너지',   label: '친환경/에너지' },
+                  ]}
+                />
+              </div>
+              <Button variant="secondary" onClick={() => setIsModalOpen(true)}>필터 가이드</Button>
             </div>
-            <div className="w-full sm:w-48">
-              <Select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                options={[
-                  { value: 'all',            label: '전체 카테고리' },
-                  { value: 'IT/소프트웨어',   label: 'IT/소프트웨어' },
-                  { value: '제조/생산',       label: '제조/생산' },
-                  { value: '유통/서비스',     label: '유통/서비스' },
-                  { value: '바이오/헬스케어', label: '바이오/헬스케어' },
-                  { value: '친환경/에너지',   label: '친환경/에너지' },
-                ]}
-              />
+
+            {/* 오른쪽 절반: 내 맞춤 공고 보기 버튼 */}
+            <div className="flex-1 flex justify-end items-center">
+              <button
+                onClick={() => setShowMyPosts(prev => !prev)}
+                className="flex items-center gap-3 px-5 py-2.5 rounded-xl transition-all"
+                style={{
+                  background: '#E0F7F3',  
+                  
+                  color: '#374151',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                }}
+              >
+                ✦ 내 맞춤 공고 보기
+
+                {/* 슬라이드 토글 — 내부만 색 변경 */}
+                <div
+                  style={{
+                    width: '38px',
+                    height: '22px',
+                    borderRadius: '999px',
+                    background: showMyPosts
+                      ? 'linear-gradient(135deg, #00C9A7, #00b394)'
+                      : 'linear-gradient(135deg, #d1d5db, #e5e7eb)',
+                    boxShadow: showMyPosts
+                      ? 'inset 2px 2px 4px rgba(0,0,0,0.15)'
+                      : 'inset 2px 2px 4px rgba(0,0,0,0.12), inset -1px -1px 3px rgba(255,255,255,0.6)',
+                    position: 'relative',
+                    flexShrink: 0,
+                    transition: 'background 0.25s',
+                  }}
+                >
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '3px',
+                      left: showMyPosts ? '18px' : '3px',
+                      width: '16px',
+                      height: '16px',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(145deg, #ffffff, #f0f0f0)',
+                      boxShadow: '2px 2px 4px rgba(0,0,0,0.2), -1px -1px 3px rgba(255,255,255,0.8)',
+                      transition: 'left 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                    }}
+                  />
+                </div>
+              </button>
             </div>
-            <Button variant="secondary" onClick={() => setIsModalOpen(true)}>필터 가이드</Button>
+
           </div>
         </Card>
 
@@ -263,7 +321,8 @@ export default function MatchPosting() {
           </div>
         </div>
 
-        {/* 마감 알림 버튼 - 캘린더 뷰일 때만, 탭 아래 표시 */}
+        {/* 마감 알림 버튼 - 캘린더 뷰일 때만, 탭 아래 표시
+            ✅ 전체 탭처럼: ON → 민트 배경 + 흰 글씨 / OFF → 흰 배경 + 회색 글씨 */}
         {viewMode === 'calendar' && (
           <div className="flex items-center gap-2 mb-5">
             <button
@@ -272,7 +331,7 @@ export default function MatchPosting() {
               style={{
                 background:  isNotificationOn ? '#00C9A7' : 'white',
                 borderColor: isNotificationOn ? '#00C9A7' : 'rgba(0,0,0,0.12)',
-                color:       isNotificationOn ? 'white' : '#555',
+                color:       isNotificationOn ? '#374151' : '#555',
                 fontSize:    '13px',
                 fontWeight:  isNotificationOn ? 600 : 400,
               }}

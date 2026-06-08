@@ -326,7 +326,7 @@ export default function Community() {
     sidebarSections.flatMap(s => s.items).find(i => i.id === selectedCategory)?.label ?? selectedCategory;
 
   return (
-    <div className="min-h-screen py-8 px-6 bg-gray-50">
+    <div className="min-h-screen py-8 px-6 bg-[#F5FFFE]">
       <div className="max-w-6xl mx-auto">
 
         {/* ── 페이지 타이틀 ── */}

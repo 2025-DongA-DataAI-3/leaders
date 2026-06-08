@@ -12,7 +12,7 @@ export default function Signup() {
     e.preventDefault();
 
     if (!userId || !password || !nickname || !email) {
-      alert("모든 입력창을 빈칸 없이 꽉꽉 채워주세요쿵야!!! 😡");
+      alert("모든 입력창을 빈칸 없이 꽉꽉 채워주세요!!!");
       return;
     }
 

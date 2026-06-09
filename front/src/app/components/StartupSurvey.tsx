@@ -37,21 +37,41 @@ export default function StartupSurvey({ onComplete }: StartupSurveyProps) {
   // ------------------------------------------------------------------------
   // 💡 [변경점] 일반 함수였던 handleSubmit을 FormEvent를 받는 핸들러로 수정.
   // <form onSubmit={...}> 구조와 결합하여 웹 접근성 및 엔터키 제출을 지원합니다.
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault(); // 💡 [변경점] form 자체 제출로 인한 페이지 새로고침 방지
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    if (!age || !region || !hasStartup) {
-      alert("연령대, 지역, 창업 상태를 선택해주세요.");
-      return;
-    }
+  if (!age || !region || !hasStartup) {
+    alert("연령대, 지역, 창업 상태를 선택해주세요.");
+    return;
+  }
 
-    localStorage.setItem("userAge", age);
-    localStorage.setItem("userRegion", region);
-    localStorage.setItem("userHasStartup", hasStartup);
-    localStorage.setItem("userIdea", idea);
-    
-    onComplete();
-  };
+  // localStorage 저장 (기존 유지)
+  localStorage.setItem("userAge", age);
+  localStorage.setItem("userRegion", region);
+  localStorage.setItem("userHasStartup", hasStartup);
+  localStorage.setItem("userIdea", idea);
+
+  // DB 저장 추가
+  try {
+    const user_id = localStorage.getItem("user_id");
+
+    await fetch("http://localhost:5000/api/survey", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id,
+        age_group: age,
+        region,
+        startup_status: hasStartup,
+        idea,
+      }),
+    });
+  } catch (err) {
+    console.error("진단 저장 실패:", err);
+  }
+
+  onComplete();
+};
 
   // ------------------------------------------------------------------------
   // 2-3. 화면 렌더링(JSX) 영역

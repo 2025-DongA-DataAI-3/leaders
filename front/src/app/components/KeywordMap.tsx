@@ -157,7 +157,18 @@ export default function KeywordMap() {
     svg.attr("viewBox", `0 0 ${width} ${height}`);
 
     const nodes = filteredBubbles.map(d => ({ ...d, x: width / 2 + Math.random() * 10, y: height / 2 + Math.random() * 10 }));
-    const links = linkData.map(d => ({ ...d }));
+    // const links = linkData.map(d => ({ ...d })); //에러원인 삭제 RHY
+
+    // RHY 추가
+    // 에러가 난 D3 코드 직전에 존재하지 않는 노드를 가리키는 연결선을 필터링하여 버리는 안전장치 추가
+    // 현재 생성된 노드들의 ID만 모은 Set 생성
+    const nodeIds = new Set(nodes.map(n => n.id));
+
+    // linkData 중에서 source와 target이 모두 현재 노드(nodeIds)에 존재하는 것만 필터링!
+    const links = linkData
+      .filter(l => nodeIds.has(l.source) && nodeIds.has(l.target))
+      .map(d => ({ ...d }));
+    // 여기까지 RHY
 
     const simulation = d3.forceSimulation(nodes as d3.SimulationNodeDatum[])
       .force("link",    d3.forceLink(links).id((d: any) => d.id).distance(120))

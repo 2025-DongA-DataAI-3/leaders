@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom'; // 🆕 RHY : SPA 방식의 부드러운 페이지 이동을 위해 라우터 훅 도입
 
 export default function Signup() {
+  // 🆕 RHY : 페이지 이동을 제어할 네비게이트 함수 선언
+  const navigate = useNavigate();
+
   // 🆕 회원가입 입력값들을 안전하게 보관할 소중한 바구니 4형제
   const [userId, setUserId] = useState<string>('');
   const [password, setPassword] = useState<string>('');
@@ -34,7 +38,13 @@ export default function Signup() {
 
       if (response.ok) {
         alert(data.message || "회원가입이 완벽하게 대성공했습니다! 🎉");
-        window.location.href = "/"; // 가입 성공하면 기분 좋게 로그인 창으로 자동 이동!
+        // 🔄 RHY [핵심 수정] 회원가입 성공 시 로그인 화면으로 라우팅 변경
+        // 기존 : window.location.href = "/"; // 가입 성공하면 기분 좋게 로그인 창으로 자동 이동!
+        // 변경 : 새로고침 없이 로그인 전용 주소인 '/login'으로 부드럽게 이동
+        navigate('/login')
+          // ⚠️ 주의: App.tsx(라우터 설정)에 '/login' 경로와 로그인 컴포넌트가 매핑되어 있어야 정상 작동합니다.
+        
+
       } else {
         alert(data.message || "회원가입 실패! 이미 있는 아이디인지 확인하세요 😭");
       }
@@ -125,12 +135,26 @@ export default function Signup() {
         {/* 로그인 창으로 돌아가는 순정 링크 */}
         <div style={{ marginTop: "20px", fontSize: "13px", color: "#666" }}>
           이미 계정이 있으신가요?{" "}
-          <a 
+          {/* 기존 : 
+           <a 
             href="/" 
             style={{ color: "#00C7ae", fontWeight: "bold", cursor: "pointer", textDecoration: "underline" }}
           >
             로그인하러 가기
-          </a>
+          </a> */}
+
+          {/* 🔄 RHY [변경 사항] 기존 <a> 태그의 href="/" 대신 span 태그와 navigate 사용
+            - 이 링크를 누를 때도 메인(진단 페이지)이 아닌 로그인 화면으로 부드럽게 넘어가도록 통일했습니다.
+          */}
+          <span 
+            onClick={() => navigate('/login')} 
+            style={{ color: "#00C7ae", fontWeight: "bold", cursor: "pointer", textDecoration: "underline" }}
+          >
+            로그인하러 가기
+          </span>
+
+
+
         </div>
       </div>
     </div>

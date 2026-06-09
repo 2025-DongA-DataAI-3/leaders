@@ -156,6 +156,13 @@ export default function Login() {
           </button>
         </form>
 
+        {/* 비밀번호 찾기 버튼 */}
+        <div style={{ textAlign: "right", marginBottom: "20px" }}>
+          <a href="/forgot-password" style={{ color: "#888", fontSize: "13px", textDecoration: "none" }}>
+            비밀번호를 잊으셨나요?
+          </a>
+        </div>
+
         {/* SNS LOGIN 구분선 */}
         <div style={{ display: "flex", alignItems: "center", gap: "10px", margin: "20px 0" }}>
           <div style={{ flex: 1, height: "1px", backgroundColor: "#eee" }} />

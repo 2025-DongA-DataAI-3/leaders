@@ -1,18 +1,22 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 // 💡 [변경점] 사용하지 않는 'Check' 아이콘은 빌드 최적화를 위해 import에서 제거함
 import { Lightbulb } from "lucide-react";
 
 // ==========================================================================
 // 📌 [변경점] 컴포넌트 외부 데이터 분리 영역
-// 원본 코드에서 컴포넌트 내부에 선언되어 있던 옵션 배열들을 바깥으로 뺐습니다.
-// 이렇게 하면 컴포넌트가 재렌더링될 때마다 배열이 메모리에 새로 할당되는 것을 방지합니다.
+// 옵션 배열들을 컴포넌트 외부에 배치
+// 컴포넌트가 재렌더링될 때마다 배열이 메모리에 새로 할당되는 것을 방지
 // ==========================================================================
-const AGE_OPTIONS = ["20대", "30대", "40대", "50대", "60대"];
-const STARTUP_STATUS_OPTIONS = ["준비중", "3년미만", "3년이상"];
+const TARGET_OPTIONS = ["1인창조기업", "일반인", "대학생"];
+const HISTORY_OPTIONS = ["예비창업자", "1년미만", "2년미만", "3년미만"];
 const REGION_OPTIONS = [
   "서울", "경기", "인천", "부산", "대구", "광주", "대전", "울산",
   "세종", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주",
 ];
+//  const FIELD_OPTIONS = [
+//    "AI/기술창업", "푸드/외식", "친환경", "시니어/돌봄", 
+//    "콘텐츠", "공간/오프라인", "디지털서비스", "교육", "기타"
+//  ];
 
 interface StartupSurveyProps {
   onComplete: () => void;
@@ -27,10 +31,32 @@ export default function StartupSurvey({ onComplete }: StartupSurveyProps) {
   // ------------------------------------------------------------------------
   // 2-1. 내부 상태(State) 관리 영역 (원본 유지)
   // ------------------------------------------------------------------------
-  const [age, setAge] = useState("");
+  const [target, setTarget] = useState("");
+  const [history, setHistory] = useState("");
   const [region, setRegion] = useState("");
-  const [hasStartup, setHasStartup] = useState("");
+  const [tech, setTech] = useState("");
   const [idea, setIdea] = useState("");
+
+  // 💡 백엔드 동적 데이터 연동을 위한 상태들
+  const [fields, setFields] = useState<string[]>([]); 
+  const [field, setField] = useState("");             
+
+  // 💡 백엔드 API 호출 데이터 로드 추가
+  useEffect(() => {
+    const fetchFields = async () => {
+      try {
+        const response = await fetch("/api/startup/fields"); 
+        if (response.ok) {
+          const data = await response.json(); 
+          setFields(data);
+        }
+      } catch (error) {
+        console.error("사업 분야 카테고리를 가져오는 중 실패:", error);
+        setFields(["IT/소프트웨어", "제조/하드웨어", "바이오/헬스케어", "콘텐츠/미디어", "기타"]);
+      }
+    };
+    fetchFields();
+  }, []);
 
   // ------------------------------------------------------------------------
   // 2-2. 이벤트 핸들러 영역
@@ -40,16 +66,20 @@ export default function StartupSurvey({ onComplete }: StartupSurveyProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault(); // 💡 [변경점] form 자체 제출로 인한 페이지 새로고침 방지
 
-    if (!age || !region || !hasStartup) {
-      alert("연령대, 지역, 창업 상태를 선택해주세요.");
+    // 필수 입력 항목 유효성 체크
+    if (!target || !history || !region || !field) {
+      alert("대상, 창업이력, 지역, 사업분야를 모두 선택해주세요.");
       return;
     }
 
-    localStorage.setItem("userAge", age);
+    // 변경된 항목 구조에 맞춰 localStorage 저장 키 변경
+    localStorage.setItem("userTarget", target);
+    localStorage.setItem("userHistory", history);
     localStorage.setItem("userRegion", region);
-    localStorage.setItem("userHasStartup", hasStartup);
+    localStorage.setItem("userField", field);
+    localStorage.setItem("userTech", tech);
     localStorage.setItem("userIdea", idea);
-    
+
     onComplete();
   };
 
@@ -77,20 +107,20 @@ export default function StartupSurvey({ onComplete }: StartupSurveyProps) {
           * 최종 완료 버튼만 submit 타입으로 작동하게 조율했습니다.
           * ================================================================== */}
         <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-6">
-          
-          {/* 가. 연령대 선택 (버튼 패딩 및 폰트 굵기 스타일 미세 조정) */}
+
+          {/* 가. 대상 선택 (1인창조기업, 일반인, 대학생) */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-3">
-              연령대 <span className="text-red-500">*</span>
+              대상 <span className="text-red-500">*</span>
             </label>
-            <div className="grid grid-cols-5 gap-2">
-              {AGE_OPTIONS.map((option) => (
+            <div className="grid grid-cols-3 gap-2">
+              {TARGET_OPTIONS.map((option) => (
                 <button
-                  type="button" // 💡 [변경점] form 내부에서 의도치 않은 submit이 터지는 것을 방지
+                  type="button"
                   key={option}
-                  onClick={() => setAge(option)}
+                  onClick={() => setTarget(option)}
                   className={`px-2 py-2.5 text-sm rounded-lg border-2 font-medium transition-all ${
-                    age === option
+                    target === option
                       ? "border-[#00C9A7] bg-[#E0F7F3] text-[#00C9A7]"
                       : "border-gray-200 hover:border-[#00C9A7]/50 text-gray-600 bg-white"
                   }`}
@@ -101,7 +131,30 @@ export default function StartupSurvey({ onComplete }: StartupSurveyProps) {
             </div>
           </div>
 
-          {/* 나. 지역 선택 */}
+          {/* 나. 창업 이력 선택 (예비창업자, 1년미만, 2년미만, 3년미만) */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              창업 이력 <span className="text-red-500">*</span>
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {HISTORY_OPTIONS.map((option) => (
+                <button
+                  type="button"
+                  key={option}
+                  onClick={() => setHistory(option)}
+                  className={`px-1 py-2.5 text-xs sm:text-sm rounded-lg border-2 font-medium transition-all ${
+                    history === option
+                      ? "border-[#00C9A7] bg-[#E0F7F3] text-[#00C9A7]"
+                      : "border-gray-200 hover:border-[#00C9A7]/50 text-gray-600 bg-white"
+                  }`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 다. 지역 선택 */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-3">
               지역 <span className="text-red-500">*</span>
@@ -121,30 +174,41 @@ export default function StartupSurvey({ onComplete }: StartupSurveyProps) {
             </select>
           </div>
 
-          {/* 다. 창업 상태 선택 */}
+          {/* 라. 사업 분야 선택 */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-3">
-              창업 상태 <span className="text-red-500">*</span>
+              사업 분야 <span className="text-red-500">*</span>
             </label>
-            <div className="grid grid-cols-3 gap-3">
-              {STARTUP_STATUS_OPTIONS.map((option) => (
-                <button
-                  type="button" // 💡 [변경점] 의도치 않은 submit 방지
-                  key={option}
-                  onClick={() => setHasStartup(option)}
-                  className={`px-4 py-3 text-sm rounded-lg border-2 font-medium transition-all ${
-                    hasStartup === option
-                      ? "border-[#00C9A7] bg-[#E0F7F3] text-[#00C9A7]"
-                      : "border-gray-200 hover:border-[#00C9A7]/50 text-gray-600 bg-white"
-                  }`}
-                >
+            <select
+              value={field}
+              onChange={(e) => setField(e.target.value)}
+              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-lg bg-white focus:outline-none focus:border-[#00C9A7] text-gray-700 transition-colors"
+            >
+              <option value="">사업 분야를 선택하세요</option>
+              {fields.map((option) => (
+                <option key={option} value={option}>
                   {option}
-                </button>
+                </option>
               ))}
-            </div>
+            </select>
+          </div>
+          
+          {/* 마. 보유 기술 입력 (텍스트) */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">
+              보유 기술
+              <span className="ml-2 text-xs font-normal text-gray-400">선택사항</span>
+            </label>
+            <input
+              type="text"
+              value={tech}
+              onChange={(e) => setTech(e.target.value)}
+              placeholder="예) React, Python, 자율주행 알고리즘, 3D 프린팅 등"
+              className="w-full px-4 py-3 text-sm border-2 border-gray-200 rounded-xl focus:outline-none focus:border-[#00C9A7] text-gray-800 placeholder:text-gray-300 transition-colors"
+            />
           </div>
 
-          {/* 라. 창업 아이디어 입력 */}
+          {/* 바. 창업 아이디어 입력 */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">
               창업 아이디어

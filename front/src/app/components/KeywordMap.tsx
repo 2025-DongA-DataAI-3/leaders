@@ -5,7 +5,6 @@ import * as d3 from "d3";
 interface BubbleData {
   id: string;
   keyword: string;
-  type: "아이템" | "소비";
   frequency: number;
   changeRate: number;
   similarity: number;
@@ -13,28 +12,21 @@ interface BubbleData {
   y: number;
   size: number;
   category: string;
+  type: string;
 }
 
 interface TrendRanking {
   rank: number;
   keyword: string;
-  type: "아이템" | "소비";
   change: string;
   category: string;
 }
 
-const linkData = [
-  { source: "kw1", target: "kw2" },
-  { source: "kw1", target: "kw3" },
-  { source: "kw1", target: "kw4" },
-  { source: "kw2", target: "kw6" },
-  { source: "kw3", target: "kw8" },
-  { source: "kw4", target: "kw9" },
-  { source: "kw5", target: "kw1" },
-  { source: "kw7", target: "kw2" },
-  { source: "kw10", target: "kw3" },
-  { source: "kw4", target: "kw5" },
-];
+interface LinkData {
+  source: string;
+  target: string;
+  similarity: number; 
+}
 
 const analysisData: Record<string, {
   trend: string;
@@ -104,19 +96,29 @@ const TrendXIcon = ({ className }: TrendXIconProps) => (
 export default function KeywordMap() {
   const [top10Trends, setTop10Trends] = useState<TrendRanking[]>([]);
   const [bubbleData, setBubbleData]   = useState<BubbleData[]>([]);
+  
+  // ✂️ 여기서부터 교체 (기존 useEffect([]) 통째로 교체)
+// 연결선 교정
+  // --------------------------------------------------------------------
+  const [networkLinks, setNetworkLinks] = useState<LinkData[]>([]);
 
   useEffect(() => {
     fetch('http://localhost:5000/api/trends/ranking')
       .then(res => res.json())
-      .then(data => {
-        setTop10Trends(data.map((item: any) => ({
+      .then(resData => {
+        // 백엔드 응답이 배열이든 {trends, links} 객체든 모두 대응 가능한 방어 코드
+        const trends = Array.isArray(resData) ? resData : (resData.trends || []);
+        const apiLinks = resData.links || [];
+
+        setTop10Trends(trends.map((item: any) => ({
           rank:     item.ranking,
           keyword:  item.keyword,
           type:     "아이템" as const,
           change:   `+${item.growth_rate}%`,
           category: item.category_id ?? "기타",
         })));
-        setBubbleData(data.map((item: any) => ({
+
+        setBubbleData(trends.map((item: any) => ({
           id:         String(item.keyword_id),
           keyword:    item.keyword,
           type:       "아이템" as const,
@@ -124,12 +126,21 @@ export default function KeywordMap() {
           changeRate: item.growth_rate,
           similarity: 0.8,
           x: 50, y: 50,
-          size:     Math.max(60, Math.min(140, item.frequency / 20)),
-          category: item.category_id ?? "기타",
+          size:       Math.max(60, Math.min(140, item.frequency / 20)),
+          category:   item.category_id ?? "기타",
+        })));
+
+        // 실제 백엔드에서 전송한 유사도 관계망 데이터를 상태에 주입
+        setNetworkLinks(apiLinks.map((link: any) => ({
+          source:     String(link.source_id),
+          target:     String(link.target_id),
+          similarity: Number(link.similarity)
         })));
       })
       .catch(err => console.error('API 호출 실패:', err));
   }, []);
+  // 🛠️ 여기까지 교체
+  // --------------------------------------------------------------------
 
   const [viewMode,      setViewMode]      = useState<"ranking" | "bubbles">("ranking");
   const [selectedBubble, setSelectedBubble] = useState<string | null>(null);
@@ -164,22 +175,35 @@ export default function KeywordMap() {
     const nodes = filteredBubbles.map(d => ({ ...d, x: width / 2 + Math.random() * 10, y: height / 2 + Math.random() * 10 }));
     // const links = linkData.map(d => ({ ...d })); //에러원인 삭제 RHY
 
-    // RHY 추가
-    // 에러가 난 D3 코드 직전에 존재하지 않는 노드를 가리키는 연결선을 필터링하여 버리는 안전장치 추가
-    // 현재 생성된 노드들의 ID만 모은 Set 생성
+// ✂️ 여기서부터 교체 
+// 버블맵 연결선 교정
+    // --------------------------------------------------------------------
     const nodeIds = new Set(nodes.map(n => n.id));
 
-    // linkData 중에서 source와 target이 모두 현재 노드(nodeIds)에 존재하는 것만 필터링!
-    const links = linkData
+    // 하드코딩 linkData 대신, 실시간 상태값인 networkLinks를 필터링합니다.
+    const links = networkLinks
       .filter(l => nodeIds.has(l.source) && nodeIds.has(l.target))
       .map(d => ({ ...d }));
-    // 여기까지 RHY
 
+    // 각 링크 오프젝트가 가지고 있는 고유 similarity 수치를 기반으로 정적 거리를 계산합니다.
+    const getDistance = (linkObj: any) => {
+      const similarity = linkObj.similarity !== undefined ? linkObj.similarity : 0.5;
+      // 유사도가 1.0(최고)이면 거리 40px로 바짝 붙고, 0.0(최저)이면 240px로 멀어집니다.
+      return (1 - similarity) * 200 + 40; 
+    };
+
+    // 탄성을 끄고 계산된 고정 거리를 엄격하게 준수하는 시뮬레이션 구성
     const simulation = d3.forceSimulation(nodes as d3.SimulationNodeDatum[])
-      .force("link",    d3.forceLink(links).id((d: any) => d.id).distance(120))
-      .force("charge",  d3.forceManyBody().strength(-300))
+      .force("link", d3.forceLink(links)
+        .id((d: any) => d.id)
+        .distance(d => getDistance(d)) 
+        .strength(1) // 👈 탄성(고무줄 효과) 없이 지지대처럼 칼같이 고정하는 힘
+      )
+      .force("charge",  d3.forceManyBody().strength(-20)) // 👈 사방 척력을 대폭 줄여 거리 왜곡 방지
       .force("center",  d3.forceCenter(width / 2, height / 2))
-      .force("collide", d3.forceCollide().radius((d: any) => d.size * 0.7 + 5));
+      .force("collide", d3.forceCollide().radius((d: any) => d.size * 0.7 + 2).strength(0.1));
+    // 🛠️ 여기까지 교체
+    // --------------------------------------------------------------------
 
     const drag = (sim: any) => {
       function dragstarted(e: any, d: any) { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }
@@ -224,7 +248,7 @@ export default function KeywordMap() {
     });
 
     return () => { simulation.stop(); };
-  }, [viewMode, filteredBubbles, selectedBubble]);
+  }, [viewMode, filteredBubbles, selectedBubble, networkLinks]);
 
   return (
     <div className="min-h-screen bg-[#F5FFFE] py-8 px-6">
@@ -349,26 +373,15 @@ export default function KeywordMap() {
 
                 {/* 필터 */}
                 <div className="flex items-center justify-between mb-5">
-                  <div className="flex gap-2">
-                    {(["전체", "아이템", "소비"] as const).map((type) => (
-                      <TrendButton
-                        key={type}
-                        onClick={() => setFilterType(type)}
-                        className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all"
-                        style={{
-                          background:  filterType === type ? '#00C9A7' : '#F3F4F6',
-                          color:       filterType === type ? 'white'   : '#6B7280',
-                        }}
-                      >
-                        {type}
-                      </TrendButton>
-                    ))}
-                  </div>
+                  <div className="flex gap-2"></div>
+
                   <TrendButton
                     onClick={() => setViewMode("ranking")}
-                    className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 shadow-sm"
+                    style={{ background: '#00C9A7' }}
                   >
-                    <ArrowLeft className="w-4 h-4" /> 랭킹 보기
+                    <ArrowLeft className="w-4 h-4" /> 
+                    <span>랭킹보기</span>
                   </TrendButton>
                 </div>
 
@@ -382,10 +395,15 @@ export default function KeywordMap() {
                 >
                   <svg ref={svgRef} className="w-full h-full" />
                   <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-sm pointer-events-none">
-                    <p className="text-xs text-gray-400 mb-1.5 font-medium">크기 = 빈도  ·  색상 = 카테고리</p>
-                    <div className="flex gap-3 text-xs text-gray-500">
-                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full inline-block" style={{ background: "#00C9A7" }} />아이템</span>
-                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full inline-block" style={{ background: "#D97706" }} />소비</span>
+                    {/* 변경: 기존 아이템/소비 안내를 제거하고, 실제 getCategoryColor 스케일에 맞춘 '분야별 범례' 구성 */}
+                    <p className="text-xs text-gray-500 mb-2 font-bold tracking-tight">🎨 분야별 범례 (색상 기준)</p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs font-medium text-gray-600">
+                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ background: "#8B5CF6" }} />IT/소프트웨어</span>
+                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ background: "#3B82F6" }} />제조/생산</span>
+                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ background: "#F59E0B" }} />유통/서비스</span>
+                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ background: "#10B981" }} />바이오/헬스케어</span>
+                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ background: "#22C55E" }} />친환경/에너지</span>
+                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ background: "#00C9A7" }} />기타 기본</span>
                     </div>
                   </div>
                 </div>

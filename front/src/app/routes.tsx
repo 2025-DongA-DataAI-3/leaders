@@ -11,7 +11,8 @@ import MyPosts from "./components/MyPosts";
 import MyPage from "./components/MyPage";
 import ProfileEdit from "./components/ProfileEdit";
 import StartupSurvey from "./components/StartupSurvey";
-import CommunityWrite from "./components/CommunityWrite"
+import CommunityWrite from "./components/CommunityWrite";
+import ForgotPassword from "./components/ForgotPassword";
 
 // ==========================================
 // 💡 [START] StartupSurvey 래퍼 컴포넌트 시작
@@ -40,6 +41,11 @@ export const router = createBrowserRouter([
   {
     path: "/signup",
     Component: Signup,
+  },
+  /* 비밀번호 찾기 라우터 */
+  {
+    path: "/forgot-password",
+    Component: ForgotPassword,
   },
   {
     path: "/",

@@ -173,6 +173,22 @@ app.post('/api/survey', async (req, res) => {
   }
 });
 
+// 커뮤니티 카테고리 목록 조회
+app.get('/api/community/categories', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+  `SELECT majorcategory, subcategory FROM post_keywords 
+   ORDER BY majorcategory, 
+   CASE WHEN subcategory = '기타' THEN 1 ELSE 0 END,
+   subcategory`
+);
+    res.json(rows);
+  } catch (err) {
+    console.error('카테고리 조회 에러:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 const PORT = process.env.SERVER_PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 백엔드 서버가 포트 ${PORT}에서 작동 중입니다!`);

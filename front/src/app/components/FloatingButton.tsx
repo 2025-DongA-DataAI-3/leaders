@@ -13,11 +13,11 @@ interface SlotProps {
 // Slot: 자식 컴포넌트에게 부모의 props와 className, style을 안전하게 병합해주는 유틸리티
 const Slot = ({ children, ...props }: SlotProps & Record<string, any>) => {
   if (isValidElement(children)) {
-    return cloneElement(children, {
+    return cloneElement(children as React.ReactElement<any>, {
       ...props,
-      ...children.props,
-      className: `${props.className || ''} ${children.props.className || ''}`.trim() || undefined,
-      style: { ...props.style, ...children.props.style },
+      ...(children as React.ReactElement<any>).props,
+      className: `${props.className || ''} ${(children as React.ReactElement<any>).props.className || ''}`.trim() || undefined,
+      style: { ...props.style, ...(children as React.ReactElement<any>).props.style },
     });
   }
   return null;
@@ -313,7 +313,7 @@ function AIChatbotBox({ onClose }: AIChatbotBoxProps) {
     <div className="bg-white rounded-2xl shadow-2xl w-96 h-[500px] flex flex-col border border-gray-200">
       {/* 헤더 */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200" style={{ background: "linear-gradient(to right, #00C9A7, #00A88E)" }}>
-        <h3 className="text-white font-semibold">AI 어시스턴트</h3>
+        <h3 className="text-white font-semibold"> 창업 AI 챗봇</h3>
         <RootIconButton onClick={onClose} className="text-white hover:bg-white/20 rounded-lg p-1 transition-colors">
           <X className="w-5 h-5" />
         </RootIconButton>
@@ -526,12 +526,15 @@ export default function Root() {
           <div className="max-w-[1440px] mx-auto px-6 py-3 flex items-center justify-between">
             {/* 로고 영역 */}
             <Link to="/" className="flex items-center gap-2 flex-shrink-0">
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#00C9A7" }}>
-                <Activity className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-lg font-semibold text-gray-900 whitespace-nowrap">TrendPilot</span>
+              <img
+                src="/logo.png"
+                alt="TrendPilot"
+                className="h-9 w-auto"
+              />
+              <span className="text-lg font-black whitespace-nowrap" style={{ color: '#1F2937' }}>
+                TrendPilot
+              </span>
             </Link>
-
             {/* 링크 메뉴 및 우측 컨트롤 영역 */}
             <div className="flex items-center gap-4">
               {navItems.map((item) => (
@@ -589,7 +592,7 @@ export default function Root() {
               localStorage.removeItem("hasCompletedSurvey");
               window.location.reload();
             }}
-            className="flex items-center gap-2 px-5 py-3 rounded-full text-white shadow-2xl hover:shadow-3xl transition-all hover:scale-105"
+            className="flex items-center gap-2 px-5 py-3 rounded-full text-white shadow-2xl hover:shadow-3xl transition-all hover:scale-105 w-36 justify-center"
             style={{ background: "linear-gradient(to right, #8B5CF6, #7C3AED)" }}
             title="튜토리얼 다시보기"
           >
@@ -603,7 +606,7 @@ export default function Root() {
           ) : (
             <RootIconButton
               onClick={() => setShowCustomerService(true)}
-              className="flex items-center gap-2 px-5 py-3 rounded-full text-white shadow-2xl hover:shadow-3xl transition-all hover:scale-105"
+              className="flex items-center gap-2 px-5 py-3 rounded-full text-white shadow-2xl hover:shadow-3xl transition-all hover:scale-105 w-36 justify-center"
               style={{ background: "linear-gradient(to right, #6366F1, #4F46E5)" }}
             >
               <HelpCircle className="w-5 h-5" />
@@ -617,7 +620,7 @@ export default function Root() {
           ) : (
             <RootIconButton
               onClick={() => setShowChatbot(true)}
-              className="flex items-center gap-2 px-5 py-3 rounded-full text-white shadow-2xl hover:shadow-3xl transition-all hover:scale-105"
+              className="flex items-center gap-2 px-5 py-3 rounded-full text-white shadow-2xl hover:shadow-3xl transition-all hover:scale-105 w-36 justify-center"
               style={{ background: "linear-gradient(to right, #00C9A7, #00A88E)" }}
             >
               <MessageCircle className="w-5 h-5" />

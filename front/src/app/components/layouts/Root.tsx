@@ -196,12 +196,15 @@ export default function Root() {
       <div className="min-h-screen bg-[#F5FFFE]">
         <nav className="bg-white border-b border-gray-200 shadow-sm">
           <div className="max-w-[1440px] mx-auto px-6 py-3 flex items-center justify-between">
-            <Link to="/" className="flex items-center flex-shrink-0">
+            <Link to="/" className="flex items-center gap-2 flex-shrink-0">
               <img
                 src="/logo.png"
                 alt="TrendPilot"
                 className="h-9 w-auto"
               />
+              <span className="text-lg font-black whitespace-nowrap" style={{ color: '#1F2937' }}>
+                TrendPilot
+              </span>
             </Link>
 
             <div className="flex items-center gap-4">

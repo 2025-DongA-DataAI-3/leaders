@@ -218,9 +218,9 @@ export default function MatchPosting() {
     <div className="min-h-screen py-8 px-6 bg-[#F5FFFE] text-gray-900">
       <div className="max-w-8xl mx-auto">
         {/* 페이지 타이틀 */}
-        <div className="mb-6">
+        <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-1">추천 맞춤 공고</h1>
-          <p className="text-sm text-gray-500">당신의 창업 성향에 맞는 지원사업을 확인하세요</p>
+          <p className="text-gray-900">당신의 창업 성향에 맞는 지원사업을 확인하세요</p>
         </div>
         {/* 검색/필터 카드 */}
         <Card className="mb-6 p-5">

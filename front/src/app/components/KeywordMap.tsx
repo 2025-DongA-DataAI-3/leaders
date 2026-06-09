@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { TrendingUp, ChevronRight, Flame, ArrowLeft, Zap } from "lucide-react";
 import * as d3 from "d3";
 
+
 interface BubbleData {
   id: string;
   keyword: string;
@@ -80,12 +81,6 @@ const analysisData: Record<string, {
   },
 };
 
-// 1~3위 전용 색상
-const TOP3_STYLES = [
-    { bar: "#00C9A7", bg: "linear-gradient(90deg, #C2F0E8 0%, #fff 100%)", numColor: "#00C9A7", crown: "#FFD700" }, // 금
-    { bar: "#00B394", bg: "linear-gradient(90deg, #D8F5EF 0%, #fff 100%)", numColor: "#00B394", crown: "#C0C0C0" }, // 은
-    { bar: "#00997D", bg: "linear-gradient(90deg, #E8FAF7 0%, #fff 100%)", numColor: "#00997D", crown: "#CD7F32" }, // 동
-];
 
 interface TrendButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
@@ -109,8 +104,8 @@ export default function KeywordMap() {
     fetch('http://localhost:5000/api/trends/ranking')
       .then(res => res.json())
       .then(data => {
-        setTop10Trends(data.map((item: any) => ({
-          rank:     item.ranking,
+        setTop10Trends(data.map((item: any, idx: number) => ({
+          rank:     idx + 1,  
           keyword:  item.keyword,
           type:     "아이템" as const,
           change:   `+${item.growth_rate}%`,
@@ -222,10 +217,10 @@ export default function KeywordMap() {
         {/* 헤더 */}
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-1">
-            <Flame className="w-6 h-6" style={{ color: '#00C9A7' }} />
+            
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">창업 트렌드 버블맵</h1>
           </div>
-          <p className="text-sm text-gray-400 ml-8">실시간 뉴스 기반 키워드 트렌드 분석</p>
+          <p >실시간 뉴스 기반 키워드 트렌드를 분석해 보세요.</p>
         </div>
 
         <div className="flex gap-6">
@@ -247,72 +242,68 @@ export default function KeywordMap() {
 
               {/* 랭킹 목록 */}
               <div className="divide-y divide-gray-50">
-                {top10Trends.map((item, index) => {
-                  const isTop3  = item.rank <= 3;
-                  const top3Style = isTop3 ? TOP3_STYLES[item.rank - 1] : null;
+                  {top10Trends.map((item, idx) => {
+                    const isTop3 = item.rank <= 3;
+                    const dotColors = ["#FFD700", "#C0C0C0", "#CD7F32"];
+                    const barWidths = ["90%", "75%", "65%"];
+                    const barColors = ["#00C9A7", "#00B394", "#009E82"];
+                    const catShort = item.category?.split('/')[0] ?? item.category;
 
-                  return (
-                    <div
-                      key={item.rank}
-                      className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors cursor-pointer relative"
-                      style={{ background: isTop3 ? top3Style!.bg : 'white' }}
-                    >
-                      {/* 1~3위 컬러 바 */}
-                      {isTop3 && (
+                    return (
+                      <div
+                        key={item.rank}
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer"
+                      >
+                        {/* 도트 */}
                         <div
-                          className="absolute left-0 top-0 bottom-0 w-1 rounded-r-full"
-                          style={{ background: top3Style!.bar }}
+                          className="flex-shrink-0 w-2.5 h-2.5 rounded-full"
+                          style={{ background: isTop3 ? dotColors[item.rank - 1] : '#E5E7EB' }}
                         />
-                      )}
 
-                      {/* 순위 숫자 + 왕관 */}
-                      <div className="flex-shrink-0 text-center relative" style={{ width: '28px' }}>
-                        {isTop3 ? (
-                          <>
-                            {/* 왕관 SVG */}
-                            <svg
-                              viewBox="0 0 24 14"
-                              className="absolute -top-3 left-1/2 -translate-x-1/2"
-                              style={{ width: '18px', height: '11px', fill: top3Style!.crown }}
-                            >
-                              <path d="M0 14 L3 4 L8 9 L12 0 L16 9 L21 4 L24 14 Z" />
-                            </svg>
-                            <span className="text-xl font-black" style={{ color: top3Style!.numColor, lineHeight: 1 }}>
+                        {/* 순위 */}
+                        <div className="flex-shrink-0 w-5 text-center">
+                          {isTop3 ? (
+                            <span className="text-base font-black" style={{ color: barColors[item.rank - 1] }}>
                               {item.rank}
                             </span>
-                          </>
-                        ) : (
-                          <span className="text-sm font-semibold text-gray-500">
-                            {item.rank}
-                          </span>
-                        )}
-                      </div>
-                      
-
-                      {/* 키워드 + 카테고리 */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className={`font-semibold truncate ${isTop3 ? "text-gray-900 text-sm" : "text-gray-600 text-sm"}`}>
-                            {item.keyword}
-                          </span>
-                          
+                          ) : (
+                            <span className="text-sm font-semibold text-gray-400">{item.rank}</span>
+                          )}
                         </div>
-                        {viewMode === "ranking" && (
-                          <p className="text-xs text-gray-400 mt-0.5">{item.category}</p>
-                        )}
-                      </div>
 
-                      {/* 상승률 */}
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <TrendingUp className="w-3 h-3 text-red-400" />
-                        <span className={`font-bold text-red-400 ${isTop3 ? "text-sm" : "text-xs"}`}>
-                          {item.change}
-                        </span>
+                        {/* 키워드 + 바 */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-semibold text-sm truncate ${isTop3 ? 'text-gray-900' : 'text-gray-600'}`}>
+                              {item.keyword}
+                            </span>
+                          </div>
+                          {isTop3 && (
+                            <div className="flex items-center gap-2 mt-1">
+                              <div style={{ height: '3px', width: '70px', background: '#e5e7eb', borderRadius: '2px', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: barWidths[item.rank - 1], background: barColors[item.rank - 1], borderRadius: '2px' }} />
+                              </div>
+                              <span style={{ fontSize: '10px', color: barColors[item.rank - 1], fontWeight: 600 }}>
+                                {catShort}
+                              </span>
+                            </div>
+                          )}
+                          {!isTop3 && (
+                            <div className="text-xs text-gray-400">{item.category}</div>
+                          )}
+                        </div>
+
+                        {/* 상승률 */}
+                        <div className="flex items-center gap-0.5 flex-shrink-0">
+                          <TrendingUp className="w-3 h-3 text-red-400" />
+                          <span className={`font-bold text-red-400 ${isTop3 ? 'text-sm' : 'text-xs'}`}>
+                            {item.change}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
 
               {/* 버블맵 보기 버튼 */}
               {viewMode === "ranking" && (

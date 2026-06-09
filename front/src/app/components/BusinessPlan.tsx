@@ -306,9 +306,9 @@ export default function BusinessPlan() {
 
       {/* 상단 타이틀 + 버튼 헤더 */}
       <div className="flex-shrink-0 px-8 pt-7 pb-5 bg-[#F5FFFE]">
-        <div className="mb-6">
+        <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mb-1">사업계획서 작성</h1>
-          <p className="text-sm text-gray-500">AI로 초안을 생성하거나 직접 내용을 입력하세요</p>
+          <p className="text-gray-900">AI로 초안을 생성하거나 직접 내용을 입력하세요</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.hwp" className="hidden" onChange={handleFileAttach} />

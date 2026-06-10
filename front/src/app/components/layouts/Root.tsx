@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
-import { Activity, MessageCircle, X, Bell, TrendingUp, FileText, Clock, CheckCheck, HelpCircle, Mail, Phone, ChevronRight, GraduationCap } from "lucide-react";
-import Onboarding from "./Onboarding";
-import StartupSurvey from "./StartupSurvey";
+import { MessageCircle, X, Bell, TrendingUp, FileText, Clock, CheckCheck, HelpCircle, Mail, Phone, ChevronRight, GraduationCap } from "lucide-react";
+import Onboarding from "../Onboarding";
+import StartupSurvey from "../StartupSurvey";
 
 interface Notification {
   id: string;
@@ -197,10 +197,12 @@ export default function Root() {
         <nav className="bg-white border-b border-gray-200 shadow-sm">
           <div className="max-w-[1440px] mx-auto px-6 py-3 flex items-center justify-between">
             <Link to="/" className="flex items-center gap-2 flex-shrink-0">
-              <div className="w-9 h-9 rounded-lg bg-[#00C9A7] flex items-center justify-center">
-                <Activity className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-lg font-semibold text-gray-900 whitespace-nowrap">
+              <img
+                src="/logo.png"
+                alt="TrendPilot"
+                className="h-9 w-auto"
+              />
+              <span className="text-lg font-black whitespace-nowrap" style={{ color: '#1F2937' }}>
                 TrendPilot
               </span>
             </Link>

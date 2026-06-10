@@ -136,6 +136,59 @@ app.delete('/api/auth/delete', async (req, res) => {
   }
 });
 
+// 창업 성향 진단 저장
+app.post('/api/survey', async (req, res) => {
+  try {
+    const user_id = req.body.user_id;
+    const { age_group, region, startup_status, idea } = req.body;
+
+    if (!user_id) {
+      return res.status(400).json({ success: false, message: '로그인이 필요합니다.' });
+    }
+
+    // 기존 진단 결과 있으면 업데이트, 없으면 새로 삽입
+    const [existing] = await pool.query(
+      'SELECT memo_id FROM user_memos WHERE user_id = ?', [user_id]
+    );
+
+    if (existing.length > 0) {
+      await pool.query(
+        `UPDATE user_memos 
+         SET age_group = ?, region = ?, startup_status = ?, content = ?, updated_at = NOW()
+         WHERE user_id = ?`,
+        [age_group, region, startup_status, idea, user_id]
+      );
+    } else {
+      await pool.query(
+        `INSERT INTO user_memos (memo_id, user_id, content, age_group, region, startup_status)
+ VALUES (UUID(), ?, ?, ?, ?, ?)`,
+[user_id, idea, age_group, region, startup_status]
+);
+    }
+
+    res.json({ success: true, message: '저장 완료!' });
+  } catch (err) {
+    console.error('진단 저장 에러:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 커뮤니티 카테고리 목록 조회
+app.get('/api/community/categories', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+  `SELECT majorcategory, subcategory FROM post_keywords 
+   ORDER BY majorcategory, 
+   CASE WHEN subcategory = '기타' THEN 1 ELSE 0 END,
+   subcategory`
+);
+    res.json(rows);
+  } catch (err) {
+    console.error('카테고리 조회 에러:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
 const PORT = process.env.SERVER_PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 백엔드 서버가 포트 ${PORT}에서 작동 중입니다!`);

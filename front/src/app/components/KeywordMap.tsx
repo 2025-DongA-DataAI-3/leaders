@@ -2,9 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { TrendingUp, ChevronRight, Flame, ArrowLeft, Zap } from "lucide-react";
 import * as d3 from "d3";
 
+
 interface BubbleData {
   id: string;
   keyword: string;
+  type: "아이템" | "소비";
   frequency: number;
   changeRate: number;
   similarity: number;
@@ -12,21 +14,28 @@ interface BubbleData {
   y: number;
   size: number;
   category: string;
-  type: string;
 }
 
 interface TrendRanking {
   rank: number;
   keyword: string;
+  type: "아이템" | "소비";
   change: string;
   category: string;
 }
 
-interface LinkData {
-  source: string;
-  target: string;
-  similarity: number; 
-}
+const linkData = [
+  { source: "kw1", target: "kw2" },
+  { source: "kw1", target: "kw3" },
+  { source: "kw1", target: "kw4" },
+  { source: "kw2", target: "kw6" },
+  { source: "kw3", target: "kw8" },
+  { source: "kw4", target: "kw9" },
+  { source: "kw5", target: "kw1" },
+  { source: "kw7", target: "kw2" },
+  { source: "kw10", target: "kw3" },
+  { source: "kw4", target: "kw5" },
+];
 
 const analysisData: Record<string, {
   trend: string;
@@ -72,12 +81,6 @@ const analysisData: Record<string, {
   },
 };
 
-// 1~3위 전용 색상
-const TOP3_STYLES = [
-    { bar: "#00C9A7", bg: "linear-gradient(90deg, #C2F0E8 0%, #fff 100%)", numColor: "#00C9A7", crown: "#FFD700" }, // 금
-    { bar: "#00B394", bg: "linear-gradient(90deg, #D8F5EF 0%, #fff 100%)", numColor: "#00B394", crown: "#C0C0C0" }, // 은
-    { bar: "#00997D", bg: "linear-gradient(90deg, #E8FAF7 0%, #fff 100%)", numColor: "#00997D", crown: "#CD7F32" }, // 동
-];
 
 interface TrendButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
@@ -96,29 +99,19 @@ const TrendXIcon = ({ className }: TrendXIconProps) => (
 export default function KeywordMap() {
   const [top10Trends, setTop10Trends] = useState<TrendRanking[]>([]);
   const [bubbleData, setBubbleData]   = useState<BubbleData[]>([]);
-  
-  // ✂️ 여기서부터 교체 (기존 useEffect([]) 통째로 교체)
-// 연결선 교정
-  // --------------------------------------------------------------------
-  const [networkLinks, setNetworkLinks] = useState<LinkData[]>([]);
 
   useEffect(() => {
     fetch('http://localhost:5000/api/trends/ranking')
       .then(res => res.json())
-      .then(resData => {
-        // 백엔드 응답이 배열이든 {trends, links} 객체든 모두 대응 가능한 방어 코드
-        const trends = Array.isArray(resData) ? resData : (resData.trends || []);
-        const apiLinks = resData.links || [];
-
-        setTop10Trends(trends.map((item: any) => ({
-          rank:     item.ranking,
+      .then(data => {
+        setTop10Trends(data.map((item: any, idx: number) => ({
+          rank:     idx + 1,  
           keyword:  item.keyword,
           type:     "아이템" as const,
           change:   `+${item.growth_rate}%`,
           category: item.category_id ?? "기타",
         })));
-
-        setBubbleData(trends.map((item: any) => ({
+        setBubbleData(data.map((item: any) => ({
           id:         String(item.keyword_id),
           keyword:    item.keyword,
           type:       "아이템" as const,
@@ -126,21 +119,12 @@ export default function KeywordMap() {
           changeRate: item.growth_rate,
           similarity: 0.8,
           x: 50, y: 50,
-          size:       Math.max(60, Math.min(140, item.frequency / 20)),
-          category:   item.category_id ?? "기타",
-        })));
-
-        // 실제 백엔드에서 전송한 유사도 관계망 데이터를 상태에 주입
-        setNetworkLinks(apiLinks.map((link: any) => ({
-          source:     String(link.source_id),
-          target:     String(link.target_id),
-          similarity: Number(link.similarity)
+          size:     Math.max(60, Math.min(140, item.frequency / 20)),
+          category: item.category_id ?? "기타",
         })));
       })
       .catch(err => console.error('API 호출 실패:', err));
   }, []);
-  // 🛠️ 여기까지 교체
-  // --------------------------------------------------------------------
 
   const [viewMode,      setViewMode]      = useState<"ranking" | "bubbles">("ranking");
   const [selectedBubble, setSelectedBubble] = useState<string | null>(null);
@@ -175,35 +159,22 @@ export default function KeywordMap() {
     const nodes = filteredBubbles.map(d => ({ ...d, x: width / 2 + Math.random() * 10, y: height / 2 + Math.random() * 10 }));
     // const links = linkData.map(d => ({ ...d })); //에러원인 삭제 RHY
 
-// ✂️ 여기서부터 교체 
-// 버블맵 연결선 교정
-    // --------------------------------------------------------------------
+    // RHY 추가
+    // 에러가 난 D3 코드 직전에 존재하지 않는 노드를 가리키는 연결선을 필터링하여 버리는 안전장치 추가
+    // 현재 생성된 노드들의 ID만 모은 Set 생성
     const nodeIds = new Set(nodes.map(n => n.id));
 
-    // 하드코딩 linkData 대신, 실시간 상태값인 networkLinks를 필터링합니다.
-    const links = networkLinks
+    // linkData 중에서 source와 target이 모두 현재 노드(nodeIds)에 존재하는 것만 필터링!
+    const links = linkData
       .filter(l => nodeIds.has(l.source) && nodeIds.has(l.target))
       .map(d => ({ ...d }));
+    // 여기까지 RHY
 
-    // 각 링크 오프젝트가 가지고 있는 고유 similarity 수치를 기반으로 정적 거리를 계산합니다.
-    const getDistance = (linkObj: any) => {
-      const similarity = linkObj.similarity !== undefined ? linkObj.similarity : 0.5;
-      // 유사도가 1.0(최고)이면 거리 40px로 바짝 붙고, 0.0(최저)이면 240px로 멀어집니다.
-      return (1 - similarity) * 200 + 40; 
-    };
-
-    // 탄성을 끄고 계산된 고정 거리를 엄격하게 준수하는 시뮬레이션 구성
     const simulation = d3.forceSimulation(nodes as d3.SimulationNodeDatum[])
-      .force("link", d3.forceLink(links)
-        .id((d: any) => d.id)
-        .distance(d => getDistance(d)) 
-        .strength(1) // 👈 탄성(고무줄 효과) 없이 지지대처럼 칼같이 고정하는 힘
-      )
-      .force("charge",  d3.forceManyBody().strength(-20)) // 👈 사방 척력을 대폭 줄여 거리 왜곡 방지
+      .force("link",    d3.forceLink(links).id((d: any) => d.id).distance(120))
+      .force("charge",  d3.forceManyBody().strength(-300))
       .force("center",  d3.forceCenter(width / 2, height / 2))
-      .force("collide", d3.forceCollide().radius((d: any) => d.size * 0.7 + 2).strength(0.1));
-    // 🛠️ 여기까지 교체
-    // --------------------------------------------------------------------
+      .force("collide", d3.forceCollide().radius((d: any) => d.size * 0.7 + 5));
 
     const drag = (sim: any) => {
       function dragstarted(e: any, d: any) { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }
@@ -248,19 +219,19 @@ export default function KeywordMap() {
     });
 
     return () => { simulation.stop(); };
-  }, [viewMode, filteredBubbles, selectedBubble, networkLinks]);
+  }, [viewMode, filteredBubbles, selectedBubble]);
 
   return (
     <div className="min-h-screen bg-[#F5FFFE] py-8 px-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-8xl mx-auto">
 
         {/* 헤더 */}
-        <div className="mb-8">
+        <div className="mb-6">
           <div className="flex items-center gap-2 mb-1">
-            <Flame className="w-6 h-6" style={{ color: '#00C9A7' }} />
+            
             <h1 className="text-2xl font-bold text-gray-900 tracking-tight">창업 트렌드 버블맵</h1>
           </div>
-          <p className="text-sm text-gray-400 ml-8">실시간 뉴스 기반 키워드 트렌드 분석</p>
+          <p >실시간 뉴스 기반 키워드 트렌드를 분석해 보세요.</p>
         </div>
 
         <div className="flex gap-6">
@@ -282,72 +253,68 @@ export default function KeywordMap() {
 
               {/* 랭킹 목록 */}
               <div className="divide-y divide-gray-50">
-                {top10Trends.map((item, index) => {
-                  const isTop3  = item.rank <= 3;
-                  const top3Style = isTop3 ? TOP3_STYLES[item.rank - 1] : null;
+                  {top10Trends.map((item, idx) => {
+                    const isTop3 = item.rank <= 3;
+                    const dotColors = ["#FFD700", "#C0C0C0", "#CD7F32"];
+                    const barWidths = ["90%", "75%", "65%"];
+                    const barColors = ["#00C9A7", "#00B394", "#009E82"];
+                    const catShort = item.category?.split('/')[0] ?? item.category;
 
-                  return (
-                    <div
-                      key={item.rank}
-                      className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors cursor-pointer relative"
-                      style={{ background: isTop3 ? top3Style!.bg : 'white' }}
-                    >
-                      {/* 1~3위 컬러 바 */}
-                      {isTop3 && (
+                    return (
+                      <div
+                        key={item.rank}
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer"
+                      >
+                        {/* 도트 */}
                         <div
-                          className="absolute left-0 top-0 bottom-0 w-1 rounded-r-full"
-                          style={{ background: top3Style!.bar }}
+                          className="flex-shrink-0 w-2.5 h-2.5 rounded-full"
+                          style={{ background: isTop3 ? dotColors[item.rank - 1] : '#E5E7EB' }}
                         />
-                      )}
 
-                      {/* 순위 숫자 + 왕관 */}
-                      <div className="flex-shrink-0 text-center relative" style={{ width: '28px' }}>
-                        {isTop3 ? (
-                          <>
-                            {/* 왕관 SVG */}
-                            <svg
-                              viewBox="0 0 24 14"
-                              className="absolute -top-3 left-1/2 -translate-x-1/2"
-                              style={{ width: '18px', height: '11px', fill: top3Style!.crown }}
-                            >
-                              <path d="M0 14 L3 4 L8 9 L12 0 L16 9 L21 4 L24 14 Z" />
-                            </svg>
-                            <span className="text-xl font-black" style={{ color: top3Style!.numColor, lineHeight: 1 }}>
+                        {/* 순위 */}
+                        <div className="flex-shrink-0 w-5 text-center">
+                          {isTop3 ? (
+                            <span className="text-base font-black" style={{ color: barColors[item.rank - 1] }}>
                               {item.rank}
                             </span>
-                          </>
-                        ) : (
-                          <span className="text-sm font-semibold text-gray-500">
-                            {item.rank}
-                          </span>
-                        )}
-                      </div>
-                      
-
-                      {/* 키워드 + 카테고리 */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className={`font-semibold truncate ${isTop3 ? "text-gray-900 text-sm" : "text-gray-600 text-sm"}`}>
-                            {item.keyword}
-                          </span>
-                          
+                          ) : (
+                            <span className="text-sm font-semibold text-gray-400">{item.rank}</span>
+                          )}
                         </div>
-                        {viewMode === "ranking" && (
-                          <p className="text-xs text-gray-400 mt-0.5">{item.category}</p>
-                        )}
-                      </div>
 
-                      {/* 상승률 */}
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <TrendingUp className="w-3 h-3 text-red-400" />
-                        <span className={`font-bold text-red-400 ${isTop3 ? "text-sm" : "text-xs"}`}>
-                          {item.change}
-                        </span>
+                        {/* 키워드 + 바 */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-semibold text-sm truncate ${isTop3 ? 'text-gray-900' : 'text-gray-600'}`}>
+                              {item.keyword}
+                            </span>
+                          </div>
+                          {isTop3 && (
+                            <div className="flex items-center gap-2 mt-1">
+                              <div style={{ height: '3px', width: '70px', background: '#e5e7eb', borderRadius: '2px', overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: barWidths[item.rank - 1], background: barColors[item.rank - 1], borderRadius: '2px' }} />
+                              </div>
+                              <span style={{ fontSize: '10px', color: barColors[item.rank - 1], fontWeight: 600 }}>
+                                {catShort}
+                              </span>
+                            </div>
+                          )}
+                          {!isTop3 && (
+                            <div className="text-xs text-gray-400">{item.category}</div>
+                          )}
+                        </div>
+
+                        {/* 상승률 */}
+                        <div className="flex items-center gap-0.5 flex-shrink-0">
+                          <TrendingUp className="w-3 h-3 text-red-400" />
+                          <span className={`font-bold text-red-400 ${isTop3 ? 'text-sm' : 'text-xs'}`}>
+                            {item.change}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
 
               {/* 버블맵 보기 버튼 */}
               {viewMode === "ranking" && (
@@ -373,15 +340,26 @@ export default function KeywordMap() {
 
                 {/* 필터 */}
                 <div className="flex items-center justify-between mb-5">
-                  <div className="flex gap-2"></div>
-
+                  <div className="flex gap-2">
+                    {(["전체", "아이템", "소비"] as const).map((type) => (
+                      <TrendButton
+                        key={type}
+                        onClick={() => setFilterType(type)}
+                        className="px-4 py-1.5 rounded-lg text-sm font-medium transition-all"
+                        style={{
+                          background:  filterType === type ? '#00C9A7' : '#F3F4F6',
+                          color:       filterType === type ? 'white'   : '#6B7280',
+                        }}
+                      >
+                        {type}
+                      </TrendButton>
+                    ))}
+                  </div>
                   <TrendButton
                     onClick={() => setViewMode("ranking")}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 shadow-sm"
-                    style={{ background: '#00C9A7' }}
+                    className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-700 transition-colors"
                   >
-                    <ArrowLeft className="w-4 h-4" /> 
-                    <span>랭킹보기</span>
+                    <ArrowLeft className="w-4 h-4" /> 랭킹 보기
                   </TrendButton>
                 </div>
 
@@ -395,15 +373,10 @@ export default function KeywordMap() {
                 >
                   <svg ref={svgRef} className="w-full h-full" />
                   <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-sm pointer-events-none">
-                    {/* 변경: 기존 아이템/소비 안내를 제거하고, 실제 getCategoryColor 스케일에 맞춘 '분야별 범례' 구성 */}
-                    <p className="text-xs text-gray-500 mb-2 font-bold tracking-tight">🎨 분야별 범례 (색상 기준)</p>
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs font-medium text-gray-600">
-                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ background: "#8B5CF6" }} />IT/소프트웨어</span>
-                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ background: "#3B82F6" }} />제조/생산</span>
-                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ background: "#F59E0B" }} />유통/서비스</span>
-                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ background: "#10B981" }} />바이오/헬스케어</span>
-                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ background: "#22C55E" }} />친환경/에너지</span>
-                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ background: "#00C9A7" }} />기타 기본</span>
+                    <p className="text-xs text-gray-400 mb-1.5 font-medium">크기 = 빈도  ·  색상 = 카테고리</p>
+                    <div className="flex gap-3 text-xs text-gray-500">
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full inline-block" style={{ background: "#00C9A7" }} />아이템</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full inline-block" style={{ background: "#D97706" }} />소비</span>
                     </div>
                   </div>
                 </div>

@@ -68,6 +68,8 @@ app.post("/api/signup", async (req, res) => {
   const password = req.body.password || req.body.userPw || req.body.pw;
   const nickname = req.body.nickname || req.body.name || "유저";
   const email = req.body.email || `${userId}@trendpilot.com`;
+  const phone = req.body.phone || null;
+  const birthDate = req.body.birthDate || null;
 
   if (!userId || !password) {
     return res.status(400).json({ success: false, message: "아이디와 비밀번호를 입력해주세요." });
@@ -86,8 +88,8 @@ app.post("/api/signup", async (req, res) => {
     }
 
     await pool.query(
-      "INSERT INTO users (user_id, email, password, nickname, role) VALUES (?, ?, ?, ?, ?)",
-      [userId, email, password, nickname, "USER"]
+      "INSERT INTO users (user_id, email, password, nickname, phone, birth_date, role) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [userId, email, password, nickname, phone, birthDate, "USER"]
     );
 
     res.json({ success: true, message: "회원가입 성공!" });

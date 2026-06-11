@@ -128,8 +128,8 @@ export default function Login() {
       } as React.CSSProperties}>
 
         {/* 로고 */}
-        <div style={{ marginBottom: "24px" }}>
-          <span style={{ fontSize: "40px" }}>📉</span>
+        <div style={{ marginBottom: "25px", display: "flex", flexDirection: "column", alignItems: "center" }}>
+          <img src="/logo.png" alt="TrendPilot" style={{ width: "60px", height: "60px" }} />
           <h2 style={{ margin: "10px 0 5px 0", fontWeight: "bold", color: "#111" }}>TrendPilot</h2>
           <p style={{ margin: 0, color: "#666", fontSize: "14px" }}>서비스 한 줄 설명</p>
         </div>

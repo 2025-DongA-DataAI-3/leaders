@@ -1,9 +1,8 @@
-import { useState, forwardRef, type ButtonHTMLAttributes, type TextareaHTMLAttributes, type ReactNode, cloneElement, isValidElement, type SVGProps } from 'react';
+import { useState, useEffect, forwardRef, type ButtonHTMLAttributes, type TextareaHTMLAttributes, type ReactNode, cloneElement, isValidElement, type SVGProps } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { initialPosts, Comment } from '../data/posts';
 
 /* ==========================================================================
-   [방어벽 1] Radix UI 사상 기반 Slot 컴포넌트 (공용 UI 제거 대비)
+   Slot 컴포넌트
    ========================================================================== */
 interface SlotProps {
   children?: ReactNode;
@@ -22,7 +21,7 @@ const Slot = ({ children, ...props }: SlotProps & Record<string, any>) => {
 };
 
 /* ==========================================================================
-   [방어벽 2] 외부 의존성이 0%인 1:1 순수 SVG 로컬 아이콘 팩
+   로컬 아이콘 팩
    ========================================================================== */
 const Icons = {
   ArrowLeft: (props: SVGProps<SVGSVGElement>) => (
@@ -31,11 +30,11 @@ const Icons = {
   Flag: (props: SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg>
   ),
-  ThumbsUp: ({ fill = "none", ...props }: SVGProps<SVGSVGElement> & { fill?: string }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88Z"/></svg>
-  ),
   MessageSquare: (props: SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+  ),
+  Eye: (props: SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
   ),
   AlertTriangle: (props: SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
@@ -49,7 +48,7 @@ const Icons = {
 };
 
 /* ==========================================================================
-   [방어벽 3] 도메인 전용 독립형 버튼 컴포넌트
+   공통 버튼/텍스트에어리어
    ========================================================================== */
 export interface PostActionButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   asChild?: boolean;
@@ -69,9 +68,6 @@ const PostActionButton = forwardRef<HTMLButtonElement, PostActionButtonProps>(
 );
 PostActionButton.displayName = "PostActionButton";
 
-/* ==========================================================================
-   [방어벽 4] 도메인 전용 독립형 텍스트에어리어 컴포넌트
-   ========================================================================== */
 export interface PostActionTextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {}
 
 const PostActionTextarea = forwardRef<HTMLTextAreaElement, PostActionTextareaProps>(
@@ -88,7 +84,7 @@ const PostActionTextarea = forwardRef<HTMLTextAreaElement, PostActionTextareaPro
 PostActionTextarea.displayName = "PostActionTextarea";
 
 /* ==========================================================================
-   [방어벽 5] 완전 격리형 로컬 신고 모달 컴포넌트
+   신고 모달 (UI만 유지, 서버 저장 없음)
    ========================================================================== */
 interface PostReportModalProps {
   isOpen: boolean;
@@ -213,97 +209,170 @@ const PostReportModal = ({
   );
 };
 
+/* ==========================================================================
+   타입 정의 (DB 응답)
+   ========================================================================== */
+interface CommentRow {
+  comment_id: string;
+  user_id: string;
+  author: string;
+  content: string;
+  created_at: string;
+}
+
+interface PostDetail {
+  post_id: string;
+  user_id: string;
+  author: string;
+  title: string;
+  content: string;
+  view_count: number;
+  created_at: string;
+  updated_at: string | null;
+  majorcategory: string | null;
+  subcategory: string | null;
+  comments: CommentRow[];
+}
+
+const API_BASE = 'http://localhost:5000';
+
+/* ==========================================================================
+   유틸: 상대시간 포맷
+   ========================================================================== */
+function formatTimestamp(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffMin < 1) return '방금 전';
+  if (diffMin < 60) return `${diffMin}분 전`;
+  if (diffHour < 24) return `${diffHour}시간 전`;
+  if (diffDay < 7) return `${diffDay}일 전`;
+
+  return date.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+
+/* ==========================================================================
+   본문 렌더링 (마크다운 비슷한 간단 포맷)
+   ========================================================================== */
+function renderContent(text: string) {
+  return text.split('\n').map((line, i) => {
+    if (line.startsWith('**') && line.endsWith('**')) {
+      return (
+        <p key={i} className="font-semibold text-gray-900 mt-4 mb-1">
+          {line.slice(2, -2)}
+        </p>
+      );
+    }
+    if (line.startsWith('- ')) {
+      return (
+        <li key={i} className="text-gray-700 ml-4 list-disc" style={{ fontSize: '15px', lineHeight: '1.7' }}>
+          {line.slice(2)}
+        </li>
+      );
+    }
+    if (line.trim() === '') {
+      return <br key={i} />;
+    }
+    return (
+      <p key={i} className="text-gray-700" style={{ fontSize: '15px', lineHeight: '1.7' }}>
+        {line}
+      </p>
+    );
+  });
+}
 
 /* ==========================================================================
    메인 CommunityPost 컴포넌트
    ========================================================================== */
 export default function CommunityPost() {
-  const { postId } = useParams<{ postId: string }>();
+  const { id: postId } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
-  const [posts, setPosts] = useState(initialPosts);
+  const [post, setPost] = useState<PostDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
   const [newComment, setNewComment] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
+
   const [showReportForm, setShowReportForm] = useState(false);
   const [reportReason, setReportReason] = useState('');
   const [reportCategory, setReportCategory] = useState('');
   const [reportSubmitted, setReportSubmitted] = useState(false);
 
-  const post = posts.find((p) => p.id === postId);
+  const userId = localStorage.getItem('user_id');
 
-  if (!post) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-500 mb-4">게시글을 찾을 수 없습니다.</p>
-          <PostActionButton
-            onClick={() => navigate('/community')}
-            className="px-4 py-2 bg-[#00C9A7] text-white rounded-lg hover:bg-[#00A88E] transition-colors"
-          >
-            커뮤니티로 돌아가기
-          </PostActionButton>
-        </div>
-      </div>
-    );
-  }
+  // ── 게시글 상세 불러오기 ──
+  const fetchPost = () => {
+    if (!postId) return;
+    setLoading(true);
 
-  const handlePostLike = () => {
-    setPosts(posts.map((p) => {
-      if (p.id === postId) {
-        return {
-          ...p,
-          isLiked: !p.isLiked,
-          likes: p.isLiked ? p.likes - 1 : p.likes + 1,
-        };
-      }
-      return p;
-    }));
+    fetch(`${API_BASE}/api/posts/${postId}`)
+      .then(res => {
+        if (res.status === 404) {
+          setNotFound(true);
+          return null;
+        }
+        return res.json();
+      })
+      .then((data: PostDetail | null) => {
+        if (data) setPost(data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('게시글 조회 실패:', err);
+        setNotFound(true);
+        setLoading(false);
+      });
   };
 
-  const handleCommentLike = (commentId: string) => {
-    setPosts(posts.map((p) => {
-      if (p.id === postId) {
-        return {
-          ...p,
-          commentList: p.commentList.map((c) => {
-            if (c.id === commentId) {
-              return {
-                ...c,
-                isLiked: !c.isLiked,
-                likes: c.isLiked ? c.likes - 1 : c.likes + 1,
-              };
-            }
-            return c;
-          }),
-        };
+  useEffect(() => {
+    fetchPost();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postId]);
+
+  // ── 댓글 작성 ──
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !post) return;
+
+    if (!userId) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
+    setSubmittingComment(true);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/posts/${post.post_id}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId, content: newComment.trim() }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        alert(data.message || '댓글 등록에 실패했습니다.');
+        setSubmittingComment(false);
+        return;
       }
-      return p;
-    }));
+
+      // 새 댓글을 목록 끝에 추가
+      setPost(prev => prev ? { ...prev, comments: [...prev.comments, data.comment] } : prev);
+      setNewComment('');
+    } catch (err) {
+      console.error('댓글 작성 에러:', err);
+      alert('서버 연결에 실패했습니다.');
+    } finally {
+      setSubmittingComment(false);
+    }
   };
 
-  const handleAddComment = () => {
-    if (!newComment.trim()) return;
-    const comment: Comment = {
-      id: `c${Date.now()}`,
-      author: '나',
-      avatar: '😊',
-      content: newComment.trim(),
-      timestamp: '방금 전',
-      likes: 0,
-      isLiked: false,
-    };
-    setPosts(posts.map((p) => {
-      if (p.id === postId) {
-        return {
-          ...p,
-          comments: p.comments + 1,
-          commentList: [...p.commentList, comment],
-        };
-      }
-      return p;
-    }));
-    setNewComment('');
-  };
-
+  // ── 신고 (UI만, 서버 저장 없음) ──
   const handleReportSubmit = () => {
     if (!reportCategory || !reportReason.trim()) return;
     setReportSubmitted(true);
@@ -321,32 +390,30 @@ export default function CommunityPost() {
     setReportCategory('');
   };
 
-  const renderContent = (text: string) => {
-    return text.split('\n').map((line, i) => {
-      if (line.startsWith('**') && line.endsWith('**')) {
-        return (
-          <p key={i} className="font-semibold text-gray-900 mt-4 mb-1">
-            {line.slice(2, -2)}
-          </p>
-        );
-      }
-      if (line.startsWith('- ')) {
-        return (
-          <li key={i} className="text-gray-700 ml-4 list-disc" style={{ fontSize: '15px', lineHeight: '1.7' }}>
-            {line.slice(2)}
-          </li>
-        );
-      }
-      if (line.trim() === '') {
-        return <br key={i} />;
-      }
-      return (
-        <p key={i} className="text-gray-700" style={{ fontSize: '15px', lineHeight: '1.7' }}>
-          {line}
-        </p>
-      );
-    });
-  };
+  // ── 로딩 / 에러 상태 ──
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-400">불러오는 중...</p>
+      </div>
+    );
+  }
+
+  if (notFound || !post) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500 mb-4">게시글을 찾을 수 없습니다.</p>
+          <PostActionButton
+            onClick={() => navigate('/community')}
+            className="px-4 py-2 bg-[#00C9A7] text-white rounded-lg hover:bg-[#00A88E] transition-colors"
+          >
+            커뮤니티로 돌아가기
+          </PostActionButton>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen py-8 px-6">
@@ -369,20 +436,22 @@ export default function CommunityPost() {
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center text-2xl">
-                  {post.avatar}
+                  👤
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-gray-900">{post.author}</span>
                     <span className="text-sm text-gray-400">•</span>
-                    <span className="text-sm text-gray-500">{post.timestamp}</span>
+                    <span className="text-sm text-gray-500">{formatTimestamp(post.created_at)}</span>
                   </div>
-                  <span
-                    className="text-xs px-2 py-0.5 rounded-full mt-1 inline-block"
-                    style={{ background: '#E0F7F3', color: '#00A88E' }}
-                  >
-                    {post.category}
-                  </span>
+                  {post.subcategory && (
+                    <span
+                      className="text-xs px-2 py-0.5 rounded-full mt-1 inline-block"
+                      style={{ background: '#E0F7F3', color: '#00A88E' }}
+                    >
+                      {post.subcategory}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -405,47 +474,23 @@ export default function CommunityPost() {
 
           {/* Full Content */}
           <div className="px-6 pb-4 space-y-1">
-            {renderContent(post.fullContent)}
+            {renderContent(post.content)}
           </div>
 
-          {/* Tags */}
-          <div className="px-6 pb-4 flex flex-wrap gap-2">
-            {post.tags.map((tag, idx) => (
-              <span
-                key={idx}
-                className="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-600"
-              >
-                #{tag}
-              </span>
-            ))}
-          </div>
-
-          {/* Post Actions */}
+          {/* Post Meta (조회수 / 댓글수) */}
           <div className="px-6 py-4 border-t border-gray-100 flex items-center gap-3">
-            <PostActionButton
-              onClick={handlePostLike}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all ${
-                post.isLiked
-                  ? 'bg-[#E0F7F3] text-[#00C9A7]'
-                  : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-              }`}
-              style={{ fontSize: '14px' }}
-            >
-              <Icons.ThumbsUp
-                className="w-4 h-4"
-                fill={post.isLiked ? '#00C9A7' : 'none'}
-              />
-              <span className="font-medium">{post.likes}</span>
-              <span>좋아요</span>
-            </PostActionButton>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-50 text-gray-500">
+              <Icons.Eye className="w-4 h-4" />
+              <span style={{ fontSize: '14px' }}>조회 {post.view_count}</span>
+            </div>
             <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-50 text-gray-500">
               <Icons.MessageSquare className="w-4 h-4" />
-              <span style={{ fontSize: '14px' }}>댓글 {post.commentList.length}</span>
+              <span style={{ fontSize: '14px' }}>댓글 {post.comments.length}</span>
             </div>
           </div>
         </div>
 
-        {/* Isolation Report Modal */}
+        {/* Report Modal */}
         <PostReportModal
           isOpen={showReportForm}
           onClose={handleCloseReportModal}
@@ -461,48 +506,33 @@ export default function CommunityPost() {
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100">
             <h2 className="font-semibold text-gray-900" style={{ fontSize: '16px' }}>
-              댓글 <span className="text-[#00C9A7]">{post.commentList.length}</span>
+              댓글 <span className="text-[#00C9A7]">{post.comments.length}</span>
             </h2>
           </div>
 
           {/* Comment List */}
           <div className="divide-y divide-gray-50">
-            {post.commentList.length === 0 ? (
+            {post.comments.length === 0 ? (
               <div className="py-10 text-center text-gray-400" style={{ fontSize: '14px' }}>
                 첫 댓글을 남겨보세요!
               </div>
             ) : (
-              post.commentList.map((comment) => (
-                <div key={comment.id} className="px-6 py-4">
+              post.comments.map((comment) => (
+                <div key={comment.comment_id} className="px-6 py-4">
                   <div className="flex items-start gap-3">
                     <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-lg flex-shrink-0">
-                      {comment.avatar}
+                      👤
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium text-gray-900" style={{ fontSize: '14px' }}>
                           {comment.author}
                         </span>
-                        <span className="text-xs text-gray-400">{comment.timestamp}</span>
+                        <span className="text-xs text-gray-400">{formatTimestamp(comment.created_at)}</span>
                       </div>
-                      <p className="text-gray-700 mb-2" style={{ fontSize: '14px', lineHeight: '1.6' }}>
+                      <p className="text-gray-700" style={{ fontSize: '14px', lineHeight: '1.6' }}>
                         {comment.content}
                       </p>
-                      <PostActionButton
-                        onClick={() => handleCommentLike(comment.id)}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-colors ${
-                          comment.isLiked
-                            ? 'text-[#00C9A7] bg-[#E0F7F3]'
-                            : 'text-gray-400 hover:bg-gray-50'
-                        }`}
-                        style={{ fontSize: '12px' }}
-                      >
-                        <Icons.ThumbsUp
-                          className="w-3.5 h-3.5"
-                          fill={comment.isLiked ? '#00C9A7' : 'none'}
-                        />
-                        <span>{comment.likes}</span>
-                      </PostActionButton>
                     </div>
                   </div>
                 </div>
@@ -527,15 +557,16 @@ export default function CommunityPost() {
                   }}
                   placeholder="댓글을 작성하세요... (Ctrl+Enter로 등록)"
                   rows={2}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#00C9A7] focus:border-transparent resize-none text-gray-800"
+                  disabled={submittingComment}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#00C9A7] focus:border-transparent resize-none text-gray-800 disabled:opacity-50"
                   style={{ fontSize: '14px' }}
                 />
               </div>
               <PostActionButton
                 onClick={handleAddComment}
-                disabled={!newComment.trim()}
+                disabled={!newComment.trim() || submittingComment}
                 className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                  newComment.trim()
+                  newComment.trim() && !submittingComment
                     ? 'bg-[#00C9A7] text-white hover:bg-[#00A88E]'
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 }`}

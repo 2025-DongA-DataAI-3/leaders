@@ -3,13 +3,14 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRouter from './src/routes/auth.js'
 import pool from './src/db.js'
+import postsRouter from './src/routes/posts.js'
 
 dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-
+app.use('/api/posts', postsRouter); //커뮤니티
 app.use('/oauth', authRouter); // 소셜 로그인
 
 // ==========================================
@@ -177,11 +178,11 @@ app.post('/api/survey', async (req, res) => {
 app.get('/api/community/categories', async (req, res) => {
   try {
     const [rows] = await pool.query(
-  `SELECT majorcategory, subcategory FROM post_keywords 
-   ORDER BY majorcategory, 
-   CASE WHEN subcategory = '기타' THEN 1 ELSE 0 END,
-   subcategory`
-);
+    `SELECT post_keyword_id, majorcategory, subcategory FROM post_keywords 
+    ORDER BY majorcategory, 
+    CASE WHEN subcategory = '기타' THEN 1 ELSE 0 END,
+    subcategory`
+  );
     res.json(rows);
   } catch (err) {
     console.error('카테고리 조회 에러:', err);

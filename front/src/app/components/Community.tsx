@@ -1,7 +1,6 @@
 import React, { useState, useEffect, forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type HTMLAttributes } from 'react';
 import { useNavigate } from 'react-router';
-import { MessageCircle, ThumbsUp, MessageSquare, TrendingUp, User, Search, Bookmark, ChevronDown, ChevronRight } from 'lucide-react';
-import { initialPosts } from '../../app/data/posts';
+import { MessageCircle, MessageSquare, TrendingUp, User, Search, Bookmark, ChevronDown, ChevronRight } from 'lucide-react';
 
 // ==========================================
 // 1. 공통 UI 컴포넌트 (로컬 선언)
@@ -63,13 +62,34 @@ interface SidebarSection {
   items: { id: string; label: string }[];
 }
 
+// DB에서 내려오는 게시글 row 타입
+interface PostRow {
+  post_id: string;
+  user_id: string;
+  author: string;
+  title: string;
+  content: string;
+  view_count: number;
+  created_at: string;
+  updated_at: string | null;
+  majorcategory: string | null;
+  subcategory: string | null;
+  comment_count: number;
+}
+
+interface CommunityStats {
+  total: number;
+  weekly: number;
+  active_users: number;
+}
+
 // ==========================================
 // 3. Sidebar 컴포넌트
 // ==========================================
 
 interface SidebarProps {
   selectedCategory: string;
-  onSelectCategory: (id: string) => void;
+  onSelectCategory: (sectionId: string, itemId: string) => void;
   sections: SidebarSection[];
 }
 
@@ -114,7 +134,7 @@ function Sidebar({ selectedCategory, onSelectCategory, sections }: SidebarProps)
                 return (
                   <li key={item.id}>
                     <button
-                      onClick={() => onSelectCategory(item.id)}
+                      onClick={() => onSelectCategory(section.id, item.id)}
                       className={`w-full text-left px-5 py-2 transition-colors relative ${
                         isActive
                           ? 'text-[#00C9A7] font-medium bg-[#F0FDF9]'
@@ -141,18 +161,58 @@ function Sidebar({ selectedCategory, onSelectCategory, sections }: SidebarProps)
 }
 
 // ==========================================
-// 4. 메인 Community 컴포넌트
+// 4. 유틸: 상대시간 포맷
 // ==========================================
+
+function formatTimestamp(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffMin < 1) return '방금 전';
+  if (diffMin < 60) return `${diffMin}분 전`;
+  if (diffHour < 24) return `${diffHour}시간 전`;
+  if (diffDay < 7) return `${diffDay}일 전`;
+
+  return date.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+
+// ==========================================
+// 5. 메인 Community 컴포넌트
+// ==========================================
+
+const API_BASE = 'http://localhost:5000';
 
 export default function Community() {
   const navigate = useNavigate();
 
-  // DB에서 불러온 사이드바 섹션
+  // 사이드바 카테고리 (DB)
   const [sidebarSections, setSidebarSections] = useState<SidebarSection[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('전체');
+  const [selectedSection, setSelectedSection] = useState('창업 분야');
 
-  // 카테고리 DB에서 불러오기
+  // 게시글 목록 (DB)
+  const [posts, setPosts] = useState<PostRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // 검색어 (입력값과 실제 검색 트리거 분리)
+  const [searchInput, setSearchInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // 북마크 상태: post_id 목록
+  const [savedPosts, setSavedPosts] = useState<string[]>([]);
+
+  // 통계
+  const [stats, setStats] = useState<CommunityStats>({ total: 0, weekly: 0, active_users: 0 });
+
+  const userId = localStorage.getItem('user_id');
+
+  // ── 카테고리 목록 불러오기 ──
   useEffect(() => {
-    fetch('http://localhost:5000/api/community/categories')
+    fetch(`${API_BASE}/api/community/categories`)
       .then(res => res.json())
       .then(data => {
         const grouped: Record<string, { id: string; label: string }[]> = {};
@@ -179,63 +239,102 @@ export default function Community() {
         }));
 
         setSidebarSections(sections);
+        if (sections.length > 0) {
+          setSelectedSection(sections[0].id);
+        }
       })
       .catch(err => console.error('카테고리 로드 실패:', err));
   }, []);
 
-  const [selectedCategory, setSelectedCategory] = useState('전체');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [posts, setPosts] = useState(initialPosts);
-  const [savedPosts, setSavedPosts] = useState<string[]>([]);
-
+  // ── 통계 불러오기 ──
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem('savedCommunityPosts');
-      if (saved) setSavedPosts(JSON.parse(saved));
-    } catch {
-      setSavedPosts([]);
-    }
+    fetch(`${API_BASE}/api/posts/stats/summary`)
+      .then(res => res.json())
+      .then(data => setStats(data))
+      .catch(err => console.error('통계 로드 실패:', err));
   }, []);
 
-  const handleLike = (e: React.MouseEvent, postId: string) => {
-    e.stopPropagation();
-    setPosts(posts.map(post =>
-      post.id === postId
-        ? { ...post, isLiked: !post.isLiked, likes: post.isLiked ? post.likes - 1 : post.likes + 1 }
-        : post
-    ));
+  // ── 내 북마크 목록 불러오기 ──
+  useEffect(() => {
+    if (!userId) return;
+    fetch(`${API_BASE}/api/posts/bookmarks/${userId}`)
+      .then(res => res.json())
+      .then((data: { post_id: string }[]) => {
+        setSavedPosts(data.map(d => d.post_id));
+      })
+      .catch(err => console.error('북마크 로드 실패:', err));
+  }, [userId]);
+
+  // ── 게시글 목록 불러오기 (카테고리/검색 변경 시 재조회) ──
+  useEffect(() => {
+    setLoading(true);
+    const params = new URLSearchParams();
+
+    if (selectedCategory !== '전체') {
+      params.set('majorcategory', selectedSection);
+      params.set('subcategory', selectedCategory);
+    }
+    if (searchQuery) {
+      params.set('search', searchQuery);
+    }
+
+    fetch(`${API_BASE}/api/posts?${params.toString()}`)
+      .then(res => res.json())
+      .then((data: PostRow[]) => {
+        setPosts(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('게시글 로드 실패:', err);
+        setPosts([]);
+        setLoading(false);
+      });
+  }, [selectedCategory, selectedSection, searchQuery]);
+
+  const handleSelectCategory = (sectionId: string, itemId: string) => {
+    setSelectedSection(sectionId);
+    setSelectedCategory(itemId);
   };
 
-  const handleSavePost = (e: React.MouseEvent, postId: string) => {
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSearchQuery(searchInput.trim());
+  };
+
+  // ── 북마크 토글 (DB 연동) ──
+  const handleSavePost = async (e: React.MouseEvent, postId: string) => {
     e.stopPropagation();
-    const newSaved = savedPosts.includes(postId)
-      ? savedPosts.filter(id => id !== postId)
-      : [...savedPosts, postId];
-    setSavedPosts(newSaved);
+
+    if (!userId) {
+      alert('로그인이 필요합니다.');
+      return;
+    }
+
     try {
-      localStorage.setItem('savedCommunityPosts', JSON.stringify(newSaved));
-    } catch { }
-  };
+      const res = await fetch(`${API_BASE}/api/posts/${postId}/bookmark`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId }),
+      });
+      const data = await res.json();
 
-  const filteredPosts = posts.filter(post => {
-    const matchesCategory =
-      selectedCategory === '전체' || post.category === selectedCategory;
-    const matchesSearch =
-      searchQuery === '' ||
-      post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (post.tags ?? []).some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesCategory && matchesSearch;
-  });
+      if (data.bookmarked) {
+        setSavedPosts(prev => [...prev, postId]);
+      } else {
+        setSavedPosts(prev => prev.filter(id => id !== postId));
+      }
+    } catch (err) {
+      console.error('북마크 토글 실패:', err);
+    }
+  };
 
   const activeSectionParent =
-    sidebarSections.find(s => s.items.some(i => i.id === selectedCategory))?.label ?? '';
-  const activeItemLabel =
-    sidebarSections.flatMap(s => s.items).find(i => i.id === selectedCategory)?.label ?? selectedCategory;
+    sidebarSections.find(s => s.id === selectedSection)?.label ?? '';
+  const activeItemLabel = selectedCategory;
 
   return (
-    <div className="min-h-screen py-8 px-8 bg-[#F5FFFE]">
-      <div className="max-w-8xl mx-auto">
+    <div className="min-h-screen py-8 px-6 bg-[#F5FFFE]">
+      <div className="max-w-6xl mx-auto">
 
         <div className="mb-6">
           <h1 className="mb-1 text-2xl font-bold text-gray-900">커뮤니티</h1>
@@ -249,7 +348,7 @@ export default function Community() {
           {/* 좌측 사이드바 - DB에서 불러온 sections 전달 */}
           <Sidebar
             selectedCategory={selectedCategory}
-            onSelectCategory={setSelectedCategory}
+            onSelectCategory={handleSelectCategory}
             sections={sidebarSections}
           />
 
@@ -286,23 +385,25 @@ export default function Community() {
               </div>
             </div>
 
-            <div className="relative mb-5">
+            {/* 검색창 - 폼으로 묶어서 엔터 검색 지원 */}
+            <form onSubmit={handleSearchSubmit} className="relative mb-5">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <CommInput
                 type="text"
-                placeholder="게시글 검색..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="게시글 검색... (Enter로 검색)"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="w-full pl-11 pr-4 py-3 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#00C9A7] focus:border-transparent"
                 style={{ fontSize: '14px' }}
               />
-            </div>
+            </form>
 
+            {/* 통계 카드 - DB 실제 값 */}
             <div className="grid grid-cols-3 gap-4 mb-5">
               {[
-                { icon: <MessageCircle className="w-5 h-5 text-[#00C9A7]" />, label: '전체 게시글', value: '248' },
-                { icon: <TrendingUp className="w-5 h-5 text-[#00C9A7]" />, label: '이번 주 활동', value: '+24' },
-                { icon: <User className="w-5 h-5 text-[#00C9A7]" />, label: '활성 회원', value: '1,234' },
+                { icon: <MessageCircle className="w-5 h-5 text-[#00C9A7]" />, label: '전체 게시글', value: stats.total.toLocaleString() },
+                { icon: <TrendingUp className="w-5 h-5 text-[#00C9A7]" />, label: '이번 주 활동', value: `+${stats.weekly}` },
+                { icon: <User className="w-5 h-5 text-[#00C9A7]" />, label: '활성 회원', value: stats.active_users.toLocaleString() },
               ].map(({ icon, label, value }) => (
                 <div key={label} className="bg-white rounded-xl p-4 border border-gray-200">
                   <div className="flex items-center gap-3">
@@ -318,35 +419,42 @@ export default function Community() {
               ))}
             </div>
 
+            {/* 게시글 목록 */}
             <div className="space-y-4">
-              {filteredPosts.length === 0 ? (
+              {loading ? (
+                <div className="bg-white rounded-xl p-12 text-center border border-gray-200">
+                  <p className="text-gray-400">불러오는 중...</p>
+                </div>
+              ) : posts.length === 0 ? (
                 <div className="bg-white rounded-xl p-12 text-center border border-gray-200">
                   <p className="text-gray-500">검색 결과가 없습니다.</p>
                 </div>
               ) : (
-                filteredPosts.map((post) => (
+                posts.map((post) => (
                   <CommCard
-                    key={post.id}
-                    onClick={() => navigate(`/community-post/${post.id}`)}
+                    key={post.post_id}
+                    onClick={() => navigate(`/community-post/${post.post_id}`)}
                     className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg hover:border-[#00C9A7]/30 transition-all cursor-pointer"
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xl">
-                          {post.avatar}
+                          👤
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-gray-900">{post.author}</span>
                             <span className="text-sm text-gray-400">·</span>
-                            <span className="text-sm text-gray-500">{post.timestamp}</span>
+                            <span className="text-sm text-gray-500">{formatTimestamp(post.created_at)}</span>
                           </div>
-                          <span
-                            className="inline-block mt-1 text-xs px-2 py-1 rounded-full"
-                            style={{ background: '#E0F7F3', color: '#00C9A7' }}
-                          >
-                            {post.category}
-                          </span>
+                          {post.subcategory && (
+                            <span
+                              className="inline-block mt-1 text-xs px-2 py-1 rounded-full"
+                              style={{ background: '#E0F7F3', color: '#00C9A7' }}
+                            >
+                              {post.subcategory}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -355,49 +463,35 @@ export default function Community() {
                       {post.title}
                     </h3>
 
-                    <p className="text-gray-600 mb-4" style={{ fontSize: '14px', lineHeight: '1.6' }}>
+                    <p className="text-gray-600 mb-4 line-clamp-2" style={{ fontSize: '14px', lineHeight: '1.6' }}>
                       {post.content}
                     </p>
 
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {(post.tags ?? []).map((tag, idx) => (
-                        <span key={idx} className="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-600">
-                          #{tag}
-                        </span>
-                      ))}
-                    </div>
-
                     <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
-                      <CommButton
-                        onClick={(e) => handleLike(e, post.id)}
-                        className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-                          post.isLiked
-                            ? 'bg-[#E0F7F3] text-[#00C9A7]'
-                            : 'hover:bg-gray-50 text-gray-600'
-                        }`}
-                        style={{ fontSize: '14px' }}
-                      >
-                        <ThumbsUp className="w-4 h-4" fill={post.isLiked ? '#00C9A7' : 'none'} />
-                        <span>{post.likes}</span>
-                      </CommButton>
-
+                      {/* 댓글 수 - DB 값 */}
                       <div className="flex items-center gap-2 px-3 py-2 text-gray-500">
                         <MessageSquare className="w-4 h-4" />
-                        <span style={{ fontSize: '14px' }}>{(post.commentList ?? []).length}</span>
+                        <span style={{ fontSize: '14px' }}>{post.comment_count}</span>
                       </div>
 
+                      {/* 조회수 */}
+                      <div className="flex items-center gap-2 px-3 py-2 text-gray-400" style={{ fontSize: '13px' }}>
+                        조회 {post.view_count}
+                      </div>
+
+                      {/* 저장 버튼 - DB 연동 */}
                       <CommButton
-                        onClick={(e) => handleSavePost(e, post.id)}
+                        onClick={(e) => handleSavePost(e, post.post_id)}
                         className={`ml-auto flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-                          savedPosts.includes(post.id)
+                          savedPosts.includes(post.post_id)
                             ? 'bg-[#E0F7F3] text-[#00C9A7]'
                             : 'hover:bg-gray-50 text-gray-600'
                         }`}
                         style={{ fontSize: '14px' }}
                       >
-                        <Bookmark className="w-4 h-4" fill={savedPosts.includes(post.id) ? '#00C9A7' : 'none'} />
+                        <Bookmark className="w-4 h-4" fill={savedPosts.includes(post.post_id) ? '#00C9A7' : 'none'} />
                         <span className="text-xs">
-                          {savedPosts.includes(post.id) ? '저장됨' : '저장'}
+                          {savedPosts.includes(post.post_id) ? '저장됨' : '저장'}
                         </span>
                       </CommButton>
                     </div>

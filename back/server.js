@@ -140,14 +140,12 @@ app.delete('/api/auth/delete', async (req, res) => {
 // 창업 성향 진단 저장
 app.post('/api/survey', async (req, res) => {
   try {
-    const user_id = req.body.user_id;
-    const { age_group, region, startup_status, idea } = req.body;
+    const { user_id, target, history, region, field, tech, idea } = req.body;
 
     if (!user_id) {
       return res.status(400).json({ success: false, message: '로그인이 필요합니다.' });
     }
 
-    // 기존 진단 결과 있으면 업데이트, 없으면 새로 삽입
     const [existing] = await pool.query(
       'SELECT memo_id FROM user_memos WHERE user_id = ?', [user_id]
     );
@@ -155,16 +153,16 @@ app.post('/api/survey', async (req, res) => {
     if (existing.length > 0) {
       await pool.query(
         `UPDATE user_memos 
-         SET age_group = ?, region = ?, startup_status = ?, content = ?, updated_at = NOW()
+         SET target = ?, region = ?, history = ?, idea = ?, field = ?, tech = ?, updated_at = NOW()
          WHERE user_id = ?`,
-        [age_group, region, startup_status, idea, user_id]
+        [target, region, history, idea, field, tech, user_id]
       );
     } else {
       await pool.query(
-        `INSERT INTO user_memos (memo_id, user_id, content, age_group, region, startup_status)
- VALUES (UUID(), ?, ?, ?, ?, ?)`,
-[user_id, idea, age_group, region, startup_status]
-);
+        `INSERT INTO user_memos (memo_id, user_id, target, region, history, idea, field, tech)
+         VALUES (UUID(), ?, ?, ?, ?, ?, ?, ?)`,
+        [user_id, target, region, history, idea, field, tech]
+      );
     }
 
     res.json({ success: true, message: '저장 완료!' });
@@ -187,6 +185,19 @@ app.get('/api/community/categories', async (req, res) => {
   } catch (err) {
     console.error('카테고리 조회 에러:', err);
     res.status(500).json({ message: err.message });
+  }
+});
+
+app.get('/api/startup/fields', async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      "SELECT DISTINCT subcategory FROM post_keywords WHERE majorcategory = ?",
+      ["창업 분야"]
+    );
+    res.json(rows.map(r => r.subcategory));
+  } catch (error) {
+    console.error("창업 분야 조회 실패:", error);
+    res.status(500).json({ error: "서버 오류" });
   }
 });
 

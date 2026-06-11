@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { ArrowLeft, Bold, Italic, Link as LinkIcon, Image } from 'lucide-react';
 
 // ================= [로컬 컴포넌트: CommCard] =================
@@ -39,10 +39,25 @@ interface KeywordRow {
   subcategory: string;
 }
 
+// 게시글 상세 (수정 모드 진입 시 사용)
+interface PostDetail {
+  post_id: string;
+  user_id: string;
+  title: string;
+  content: string;
+  post_keyword_id: string | null;
+  majorcategory: string | null;
+  subcategory: string | null;
+}
+
 const API_BASE = 'http://localhost:5000';
 
 export default function CommunityWrite() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editPostId = searchParams.get('edit'); // ?edit=post_id 가 있으면 수정 모드
+
+  const isEditMode = !!editPostId;
 
   // DB에서 불러온 전체 카테고리 목록
   const [keywords, setKeywords] = useState<KeywordRow[]>([]);
@@ -55,20 +70,56 @@ export default function CommunityWrite() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [loadingPost, setLoadingPost] = useState(isEditMode);
+
+  const userId = localStorage.getItem('user_id');
 
   // ── 카테고리 목록 불러오기 ──
   useEffect(() => {
     fetch(`${API_BASE}/api/community/categories`)
       .then(res => res.json())
-      .then((data: { majorcategory: string; subcategory: string; post_keyword_id?: string }[]) => {
-        // post_keyword_id가 응답에 없을 수 있으니, 별도 엔드포인트가 있다면 그걸 우선 사용
-        // 여기서는 majorcategory/subcategory만 내려온다고 가정하고 fallback 처리
-        setKeywords(data as KeywordRow[]);
+      .then((data: KeywordRow[]) => {
+        setKeywords(data);
       })
       .catch(err => console.error('카테고리 로드 실패:', err));
   }, []);
 
-  // 대분류 목록 (전체 제외, 중복 제거)
+  // ── 수정 모드: 기존 게시글 데이터 불러오기 ──
+  useEffect(() => {
+    if (!editPostId) return;
+
+    fetch(`${API_BASE}/api/posts/${editPostId}`)
+      .then(res => res.json())
+      .then((data: PostDetail) => {
+        if (!data || !data.post_id) {
+          alert('게시글을 찾을 수 없습니다.');
+          navigate('/my-posts');
+          return;
+        }
+
+        // 본인 글이 아니면 접근 차단
+        if (data.user_id !== userId) {
+          alert('본인이 작성한 글만 수정할 수 있습니다.');
+          navigate('/my-posts');
+          return;
+        }
+
+        setTitle(data.title);
+        setContent(data.content);
+        if (data.majorcategory) setSelectedMajor(data.majorcategory);
+        if (data.post_keyword_id) setSelectedKeywordId(data.post_keyword_id);
+
+        setLoadingPost(false);
+      })
+      .catch(err => {
+        console.error('게시글 로드 실패:', err);
+        alert('게시글을 불러오지 못했습니다.');
+        navigate('/my-posts');
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editPostId]);
+
+  // 대분류 목록 (중복 제거)
   const majorCategories = Array.from(new Set(keywords.map(k => k.majorcategory)));
 
   // 선택된 대분류에 속한 소분류 목록
@@ -80,8 +131,6 @@ export default function CommunityWrite() {
   };
 
   const handleSubmit = async () => {
-    const userId = localStorage.getItem('user_id');
-
     if (!userId) {
       alert('로그인이 필요합니다.');
       return;
@@ -106,28 +155,53 @@ export default function CommunityWrite() {
     setSubmitting(true);
 
     try {
-      const res = await fetch(`${API_BASE}/api/posts`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userId,
-          title: title.trim(),
-          content: content.trim(),
-          post_keyword_id: selectedKeywordId,
-        }),
-      });
+      if (isEditMode) {
+        // ── 수정 ──
+        const res = await fetch(`${API_BASE}/api/posts/${editPostId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: userId,
+            title: title.trim(),
+            content: content.trim(),
+            post_keyword_id: selectedKeywordId,
+          }),
+        });
 
-      const data = await res.json();
+        const data = await res.json();
 
-      if (!res.ok || !data.success) {
-        alert(data.message || '게시글 등록에 실패했습니다.');
-        setSubmitting(false);
-        return;
+        if (!res.ok || !data.success) {
+          alert(data.message || '게시글 수정에 실패했습니다.');
+          setSubmitting(false);
+          return;
+        }
+
+        navigate(`/community-post/${editPostId}`);
+      } else {
+        // ── 새 글 작성 ──
+        const res = await fetch(`${API_BASE}/api/posts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: userId,
+            title: title.trim(),
+            content: content.trim(),
+            post_keyword_id: selectedKeywordId,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok || !data.success) {
+          alert(data.message || '게시글 등록에 실패했습니다.');
+          setSubmitting(false);
+          return;
+        }
+
+        navigate(`/community-post/${data.post_id}`);
       }
-
-      navigate(`/community-post/${data.post_id}`);
     } catch (err) {
-      console.error('게시글 등록 에러:', err);
+      console.error('게시글 저장 에러:', err);
       alert('서버 연결에 실패했습니다.');
       setSubmitting(false);
     }
@@ -136,12 +210,20 @@ export default function CommunityWrite() {
   const handleCancel = () => {
     if (title || content) {
       if (confirm('작성 중인 내용이 있습니다. 정말 취소하시겠습니까?')) {
-        navigate('/community');
+        navigate(isEditMode ? `/community-post/${editPostId}` : '/community');
       }
     } else {
-      navigate('/community');
+      navigate(isEditMode ? `/community-post/${editPostId}` : '/community');
     }
   };
+
+  if (loadingPost) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-400">불러오는 중...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#E8F8F5] via-[#F0FDFA] to-[#D5F3ED] py-8 px-6">
@@ -149,14 +231,14 @@ export default function CommunityWrite() {
         {/* 헤더 */}
         <div className="mb-6 flex items-center gap-4">
           <CommButton
-            onClick={() => navigate('/community')}
+            onClick={() => navigate(isEditMode ? `/community-post/${editPostId}` : '/community')}
             className="flex items-center gap-2 text-gray-600 hover:text-[#00C9A7] transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span className="text-base font-medium">커뮤니티</span>
+            <span className="text-base font-medium">{isEditMode ? '게시글로 돌아가기' : '커뮤니티'}</span>
           </CommButton>
           <div className="h-6 w-px bg-gray-300"></div>
-          <h1 className="text-2xl font-bold text-gray-900">글쓰기</h1>
+          <h1 className="text-2xl font-bold text-gray-900">{isEditMode ? '글 수정' : '글쓰기'}</h1>
         </div>
 
         {/* 메인 카드 */}
@@ -276,25 +358,27 @@ export default function CommunityWrite() {
               disabled={submitting}
               className="px-6 py-3 bg-gradient-to-r from-[#00C9A7] to-[#00A88E] text-white rounded-xl hover:shadow-lg transition-all font-medium disabled:opacity-50"
             >
-              {submitting ? '등록 중...' : '등록하기'}
+              {submitting ? '저장 중...' : (isEditMode ? '수정하기' : '등록하기')}
             </CommButton>
           </div>
         </CommCard>
 
         {/* 작성 가이드 */}
-        <div className="mt-6 bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-gray-200">
-          <h3 className="text-sm font-semibold text-gray-700 mb-3">📝 글쓰기 가이드</h3>
-          <ul className="space-y-2 text-sm text-gray-600">
-            <li className="flex items-start gap-2">
-              <span className="text-[#00C9A7] font-bold">•</span>
-              <span>다른 창업자들에게 도움이 될 수 있는 경험이나 노하우를 공유해주세요.</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-[#00C9A7] font-bold">•</span>
-              <span>욕설, 비방, 광고성 게시글은 관리자에 의해 삭제될 수 있습니다.</span>
-            </li>
-          </ul>
-        </div>
+        {!isEditMode && (
+          <div className="mt-6 bg-white/60 backdrop-blur-sm rounded-xl p-6 border border-gray-200">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">📝 글쓰기 가이드</h3>
+            <ul className="space-y-2 text-sm text-gray-600">
+              <li className="flex items-start gap-2">
+                <span className="text-[#00C9A7] font-bold">•</span>
+                <span>다른 창업자들에게 도움이 될 수 있는 경험이나 노하우를 공유해주세요.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-[#00C9A7] font-bold">•</span>
+                <span>욕설, 비방, 광고성 게시글은 관리자에 의해 삭제될 수 있습니다.</span>
+              </li>
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );

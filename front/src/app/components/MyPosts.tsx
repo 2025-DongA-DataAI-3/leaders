@@ -1,22 +1,8 @@
-import { useState, forwardRef } from 'react';
+import { useState, useEffect, forwardRef } from 'react';
 import { useNavigate } from 'react-router';
-import { ArrowLeft, MessageCircle, ThumbsUp, MessageSquare, Edit, Trash2 } from 'lucide-react';
+import { ArrowLeft, MessageCircle, MessageSquare, Eye, Edit, Trash2 } from 'lucide-react';
 
-interface Post {
-  id: string;
-  author: string;
-  avatar: string;
-  category: string;
-  title: string;
-  content: string;
-  tags: string[];
-  likes: number;
-  comments: number;
-  timestamp: string;
-  isLiked: boolean;
-}
-
-// ================= [로컬 컴포넌트 시작: PostButton] =================
+// ================= [로컬 컴포넌트: PostButton] =================
 interface PostButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {}
 
 const PostButton = forwardRef<HTMLButtonElement, PostButtonProps>(
@@ -33,10 +19,8 @@ const PostButton = forwardRef<HTMLButtonElement, PostButtonProps>(
   }
 );
 PostButton.displayName = 'PostButton';
-// ================= [로컬 컴포넌트 끝: PostButton] =================
 
-
-// ================= [로컬 컴포넌트 시작: PostStatCard] =================
+// ================= [로컬 컴포넌트: PostStatCard] =================
 interface PostStatCardProps {
   icon: React.ReactNode;
   label: string;
@@ -59,62 +43,95 @@ const PostStatCard = ({ icon, label, value }: PostStatCardProps) => {
   );
 };
 PostStatCard.displayName = 'PostStatCard';
-// ================= [로컬 컴포넌트 끝: PostStatCard] =================
 
+// ==========================================
+// 타입 정의 (DB 응답)
+// ==========================================
+interface MyPostRow {
+  post_id: string;
+  user_id: string;
+  author: string;
+  title: string;
+  content: string;
+  view_count: number;
+  created_at: string;
+  updated_at: string | null;
+  post_keyword_id: string | null;
+  majorcategory: string | null;
+  subcategory: string | null;
+  comment_count: number;
+}
 
-// ================= [로컬 컴포넌트 시작: PostCard] =================
+const API_BASE = 'http://localhost:5000';
+
+// ==========================================
+// 유틸: 상대시간 포맷
+// ==========================================
+function formatTimestamp(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffMin < 1) return '방금 전';
+  if (diffMin < 60) return `${diffMin}분 전`;
+  if (diffHour < 24) return `${diffHour}시간 전`;
+  if (diffDay < 7) return `${diffDay}일 전`;
+
+  return date.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+
+// ================= [로컬 컴포넌트: PostCard] =================
 interface PostCardProps {
-  post: Post;
+  post: MyPostRow;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
 }
 
 const PostCard = ({ post, onEdit, onDelete }: PostCardProps) => {
-  const navigate = useNavigate(); // ◀ 페이지 이동을 위해 추가!
+  const navigate = useNavigate();
 
   return (
-    <div 
-      onClick={() => navigate(`/community-post/${post.id}`)} // ◀ 카드 클릭 시 올바른 상세 페이지로 이동!
-      className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-shadow"
-      >
+    <div
+      onClick={() => navigate(`/community-post/${post.post_id}`)}
+      className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-lg transition-shadow cursor-pointer"
+    >
       {/* Post Header */}
-      {/* 👇 중요: 수정/삭제 버튼이 있는 헤더 영역을 클릭할 때는 카드 전체 클릭 이벤트가 발동하지 않도록 막아줍니다. */}
       <div className="flex items-start justify-between mb-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-xl">
-            {post.avatar}
+            👤
           </div>
           <div>
             <div className="flex items-center gap-2">
               <span className="font-medium text-gray-900">{post.author}</span>
               <span className="text-sm text-gray-500">•</span>
-              <span className="text-sm text-gray-500">{post.timestamp}</span>
+              <span className="text-sm text-gray-500">{formatTimestamp(post.created_at)}</span>
             </div>
-            <div className="flex items-center gap-2 mt-1">
-              <span
-                className="text-xs px-2 py-1 rounded-full"
-                style={{
-                  background: '#E0F7F3',
-                  color: '#00C9A7',
-                }}
-              >
-                {post.category}
-              </span>
-            </div>
+            {post.subcategory && (
+              <div className="flex items-center gap-2 mt-1">
+                <span
+                  className="text-xs px-2 py-1 rounded-full"
+                  style={{ background: '#E0F7F3', color: '#00C9A7' }}
+                >
+                  {post.subcategory}
+                </span>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex gap-2">
-          {/* ★ 기존 구형 button에서 로컬 컴포넌트 PostButton으로 치환됨 */}
           <PostButton
-            onClick={() => onEdit(post.id)}
+            onClick={() => onEdit(post.post_id)}
             className="p-2 rounded-lg hover:bg-gray-100 text-gray-600"
           >
             <Edit className="w-4 h-4" />
           </PostButton>
-          
-          {/* ★ 기존 구형 button에서 로컬 컴포넌트 PostButton으로 치환됨 */}
+
           <PostButton
-            onClick={() => onDelete(post.id)}
+            onClick={() => onDelete(post.post_id)}
             className="p-2 rounded-lg hover:bg-red-50 text-red-600"
           >
             <Trash2 className="w-4 h-4" />
@@ -126,100 +143,116 @@ const PostCard = ({ post, onEdit, onDelete }: PostCardProps) => {
       <h3 className="mb-3 text-gray-900" style={{ fontSize: '18px', fontWeight: '600' }}>
         {post.title}
       </h3>
-      <p className="text-gray-600 mb-4" style={{ fontSize: '14px', lineHeight: '1.6' }}>
+      <p className="text-gray-600 mb-4 line-clamp-2" style={{ fontSize: '14px', lineHeight: '1.6' }}>
         {post.content}
       </p>
-
-      {/* Tags */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {post.tags.map((tag, idx) => (
-          <span
-            key={idx}
-            className="text-xs px-3 py-1 rounded-full bg-gray-100 text-gray-600"
-          >
-            #{tag}
-          </span>
-        ))}
-      </div>
 
       {/* Post Stats */}
       <div className="flex items-center gap-4 pt-4 border-t border-gray-100">
         <div className="flex items-center gap-2 text-gray-600" style={{ fontSize: '14px' }}>
-          <ThumbsUp className="w-4 h-4" />
-          <span>{post.likes}</span>
+          <Eye className="w-4 h-4" />
+          <span>{post.view_count}</span>
         </div>
         <div className="flex items-center gap-2 text-gray-600" style={{ fontSize: '14px' }}>
           <MessageSquare className="w-4 h-4" />
-          <span>{post.comments}</span>
+          <span>{post.comment_count}</span>
         </div>
       </div>
     </div>
   );
 };
 PostCard.displayName = 'PostCard';
-// ================= [로컬 컴포넌트 끝: PostCard] =================
 
-
+// ==========================================
+// 메인 MyPosts 컴포넌트
+// ==========================================
 export default function MyPosts() {
   const navigate = useNavigate();
-  const [posts, setPosts] = useState<Post[]>([
-    {
-      id: '1',
-      author: '나',
-      avatar: '👤',
-      category: 'IT/소프트웨어',
-      title: 'SaaS 창업 준비 과정 공유합니다',
-      content: '지난 6개월간 SaaS 서비스를 기획하고 예비창업패키지에 지원하면서 겪었던 시행착오와 배운 점들을 공유합니다. 가장 중요한 것은 명확한 타겟 고객 설정이었어요...',
-      tags: ['SaaS', '창업준비', '예비창업패키지'],
-      likes: 15,
-      comments: 7,
-      timestamp: '3일 전',
-      isLiked: false,
-    },
-    {
-      id: '2',
-      author: '나',
-      avatar: '👤',
-      category: '유통/서비스',
-      title: '모바일 커머스 시장 조사 자료 정리',
-      content: '모바일 쇼핑몰 창업을 준비하면서 조사한 시장 동향과 경쟁사 분석 자료를 정리해봤습니다. 2026년 모바일 커머스 시장은 전년 대비 25% 성장이 예상되며...',
-      tags: ['모바일커머스', '시장조사', '창업'],
-      likes: 23,
-      comments: 12,
-      timestamp: '1주 전',
-      isLiked: false,
-    },
-    {
-      id: '3',
-      author: '나',
-      avatar: '👤',
-      category: '바이오/헬스케어',
-      title: '디지털헬스 규제 관련 질문입니다',
-      content: '원격 건강관리 서비스를 개발 중인데, 의료기기 인증 관련 규제가 복잡하네요. 비슷한 분야에서 창업하신 분들은 어떻게 대응하셨나요?',
-      tags: ['디지털헬스', '규제', '질문'],
-      likes: 8,
-      comments: 5,
-      timestamp: '2주 전',
-      isLiked: false,
-    },
-  ]);
+  const [posts, setPosts] = useState<MyPostRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleDelete = (postId: string) => {
-    if (confirm('정말 이 게시글을 삭제하시겠습니까?')) {
-      setPosts(posts.filter(post => post.id !== postId));
+  const userId = localStorage.getItem('user_id');
+
+  // ── 내가 쓴 글 불러오기 ──
+  const fetchMyPosts = () => {
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    fetch(`${API_BASE}/api/posts/my/${userId}`)
+      .then(res => res.json())
+      .then((data: MyPostRow[]) => {
+        setPosts(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('내 글 목록 로드 실패:', err);
+        setPosts([]);
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    fetchMyPosts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  // ── 게시글 삭제 ──
+  const handleDelete = async (postId: string) => {
+    if (!userId) return;
+    if (!confirm('정말 이 게시글을 삭제하시겠습니까?')) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/posts/${postId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        alert(data.message || '삭제에 실패했습니다.');
+        return;
+      }
+
+      setPosts(prev => prev.filter(post => post.post_id !== postId));
+    } catch (err) {
+      console.error('게시글 삭제 에러:', err);
+      alert('서버 연결에 실패했습니다.');
     }
   };
 
+  // ── 게시글 수정 페이지로 이동 ──
   const handleEdit = (postId: string) => {
-    alert('게시글 수정 기능은 곧 제공될 예정입니다.');
+    navigate(`/community-write?edit=${postId}`);
   };
+
+  if (!userId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500 mb-4">로그인이 필요합니다.</p>
+          <PostButton
+            onClick={() => navigate('/login')}
+            className="px-4 py-2 bg-[#00C9A7] text-white rounded-lg hover:bg-[#00A88E]"
+          >
+            로그인하러 가기
+          </PostButton>
+        </div>
+      </div>
+    );
+  }
+
+  const totalComments = posts.reduce((sum, post) => sum + post.comment_count, 0);
+  const totalViews = posts.reduce((sum, post) => sum + post.view_count, 0);
 
   return (
     <div className="min-h-screen py-8 px-6">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
-          {/* ★ 기존 구형 button에서 로컬 컴포넌트 PostButton으로 치환됨 */}
           <PostButton
             onClick={() => navigate('/community')}
             className="flex items-center gap-2 text-gray-600 hover:text-[#00C9A7]"
@@ -238,42 +271,40 @@ export default function MyPosts() {
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-6">
-          {/* ★ 기존 구형 스탯 마크업 영역에서 로컬 컴포넌트 PostStatCard로 치환됨 */}
-          <PostStatCard 
-            icon={<MessageCircle className="w-5 h-5 text-[#00C9A7]" />} 
-            label="작성한 글" 
-            value={posts.length} 
+          <PostStatCard
+            icon={<MessageCircle className="w-5 h-5 text-[#00C9A7]" />}
+            label="작성한 글"
+            value={posts.length}
           />
-
-          {/* ★ 기존 구형 스탯 마크업 영역에서 로컬 컴포넌트 PostStatCard로 치환됨 */}
-          <PostStatCard 
-            icon={<ThumbsUp className="w-5 h-5 text-[#00C9A7]" />} 
-            label="받은 좋아요" 
-            value={posts.reduce((sum, post) => sum + post.likes, 0)} 
+          <PostStatCard
+            icon={<Eye className="w-5 h-5 text-[#00C9A7]" />}
+            label="총 조회수"
+            value={totalViews}
           />
-
-          {/* ★ 기존 구형 스탯 마크업 영역에서 로컬 컴포넌트 PostStatCard로 치환됨 */}
-          <PostStatCard 
-            icon={<MessageSquare className="w-5 h-5 text-[#00C9A7]" />} 
-            label="댓글" 
-            value={posts.reduce((sum, post) => sum + post.comments, 0)} 
+          <PostStatCard
+            icon={<MessageSquare className="w-5 h-5 text-[#00C9A7]" />}
+            label="댓글"
+            value={totalComments}
           />
         </div>
 
         {/* Posts */}
         <div className="space-y-4">
-          {posts.length === 0 ? (
+          {loading ? (
+            <div className="bg-white rounded-xl p-12 text-center border border-gray-200">
+              <p className="text-gray-400">불러오는 중...</p>
+            </div>
+          ) : posts.length === 0 ? (
             <div className="bg-white rounded-xl p-12 text-center border border-gray-200">
               <p className="text-gray-500">작성한 게시글이 없습니다.</p>
             </div>
           ) : (
             posts.map((post) => (
-              /* ★ 기존 구형 리스트 맵핑 내부 마크업이 로컬 컴포넌트 PostCard로 정밀 치환됨 */
-              <PostCard 
-                key={post.id} 
-                post={post} 
-                onEdit={handleEdit} 
-                onDelete={handleDelete} 
+              <PostCard
+                key={post.post_id}
+                post={post}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
               />
             ))
           )}

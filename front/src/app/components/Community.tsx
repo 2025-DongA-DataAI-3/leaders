@@ -89,11 +89,12 @@ interface CommunityStats {
 
 interface SidebarProps {
   selectedCategory: string;
+   selectedSection: string;
   onSelectCategory: (sectionId: string, itemId: string) => void;
   sections: SidebarSection[];
 }
 
-function Sidebar({ selectedCategory, onSelectCategory, sections }: SidebarProps) {
+function Sidebar({ selectedCategory, selectedSection, onSelectCategory, sections }: SidebarProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
 
   // sections가 로드되면 전부 열린 상태로 초기화
@@ -130,7 +131,7 @@ function Sidebar({ selectedCategory, onSelectCategory, sections }: SidebarProps)
           {openSections[section.id] && (
             <ul className="border-t border-gray-100">
               {section.items.map((item) => {
-                const isActive = selectedCategory === item.id;
+                const isActive = selectedCategory === item.id && selectedSection === section.id;
                 return (
                   <li key={item.id}>
                     <button
@@ -270,9 +271,12 @@ export default function Community() {
     setLoading(true);
     const params = new URLSearchParams();
 
-    if (selectedCategory !== '전체') {
-      params.set('majorcategory', selectedSection);
-      params.set('subcategory', selectedCategory);
+    if (selectedCategory === '전체') {
+    // 대분류만 필터 (해당 섹션 전체)
+    params.set('majorcategory', selectedSection);
+    } else {
+    params.set('majorcategory', selectedSection);
+    params.set('subcategory', selectedCategory);
     }
     if (searchQuery) {
       params.set('search', searchQuery);
@@ -348,6 +352,7 @@ export default function Community() {
           {/* 좌측 사이드바 - DB에서 불러온 sections 전달 */}
           <Sidebar
             selectedCategory={selectedCategory}
+            selectedSection={selectedSection}
             onSelectCategory={handleSelectCategory}
             sections={sidebarSections}
           />

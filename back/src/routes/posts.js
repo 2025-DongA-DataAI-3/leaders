@@ -47,6 +47,33 @@ router.get('/', async (req, res) => {
 });
 
 // ==========================================
+// 8. 내가 쓴 글 목록
+// GET /api/posts/my/:user_id
+// ==========================================
+router.get('/my/:user_id', async (req, res) => {
+  const { user_id } = req.params;
+ 
+  try {
+    const [rows] = await pool.query(`
+      SELECT p.post_id, p.user_id, u.nickname AS author, p.title, p.content,
+             p.view_count, p.created_at, p.updated_at,
+             pk.post_keyword_id, pk.majorcategory, pk.subcategory,
+             (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.post_id) AS comment_count
+      FROM posts p
+      JOIN users u ON p.user_id = u.user_id
+      LEFT JOIN post_keywords pk ON p.post_keyword_id = pk.post_keyword_id
+      WHERE p.user_id = ?
+      ORDER BY p.created_at DESC
+    `, [user_id]);
+ 
+    res.json(rows);
+  } catch (err) {
+    console.error('내 글 목록 조회 에러:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ==========================================
 // 2. 게시글 상세 조회 (댓글 포함, 조회수 +1)
 // GET /api/posts/:post_id
 // ==========================================
@@ -61,7 +88,7 @@ router.get('/:post_id', async (req, res) => {
     const [posts] = await pool.query(`
       SELECT p.post_id, p.user_id, u.nickname AS author, p.title, p.content,
              p.view_count, p.created_at, p.updated_at,
-             pk.majorcategory, pk.subcategory
+             pk.post_keyword_id, pk.majorcategory, pk.subcategory
       FROM posts p
       JOIN users u ON p.user_id = u.user_id
       LEFT JOIN post_keywords pk ON p.post_keyword_id = pk.post_keyword_id
@@ -271,6 +298,76 @@ router.get('/stats/summary', async (req, res) => {
     });
   } catch (err) {
     console.error('통계 조회 에러:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ==========================================
+// 9. 게시글 수정
+// PUT /api/posts/:post_id
+// body: { user_id, title, content, post_keyword_id }
+// ==========================================
+router.put('/:post_id', async (req, res) => {
+  const { post_id } = req.params;
+  const { user_id, title, content, post_keyword_id } = req.body;
+ 
+  if (!user_id || !title || !content) {
+    return res.status(400).json({ message: 'user_id, title, content는 필수입니다.' });
+  }
+ 
+  try {
+    // 작성자 본인 확인
+    const [existing] = await pool.query('SELECT user_id FROM posts WHERE post_id = ?', [post_id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
+    }
+    if (existing[0].user_id !== user_id) {
+      return res.status(403).json({ message: '본인이 작성한 글만 수정할 수 있습니다.' });
+    }
+ 
+    await pool.query(
+      `UPDATE posts SET title = ?, content = ?, post_keyword_id = ?, updated_at = NOW()
+       WHERE post_id = ?`,
+      [title, content, post_keyword_id || null, post_id]
+    );
+ 
+    res.json({ success: true, message: '게시글이 수정되었습니다.' });
+  } catch (err) {
+    console.error('게시글 수정 에러:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+ 
+// ==========================================
+// 10. 게시글 삭제
+// DELETE /api/posts/:post_id
+// body: { user_id }
+// ==========================================
+router.delete('/:post_id', async (req, res) => {
+  const { post_id } = req.params;
+  const { user_id } = req.body;
+ 
+  if (!user_id) {
+    return res.status(400).json({ message: 'user_id는 필수입니다.' });
+  }
+ 
+  try {
+    const [existing] = await pool.query('SELECT user_id FROM posts WHERE post_id = ?', [post_id]);
+    if (existing.length === 0) {
+      return res.status(404).json({ message: '게시글을 찾을 수 없습니다.' });
+    }
+    if (existing[0].user_id !== user_id) {
+      return res.status(403).json({ message: '본인이 작성한 글만 삭제할 수 있습니다.' });
+    }
+ 
+    // 댓글, 북마크 먼저 삭제 (FK 제약 대비)
+    await pool.query('DELETE FROM comments WHERE post_id = ?', [post_id]);
+    await pool.query('DELETE FROM post_bookmarks WHERE post_id = ?', [post_id]);
+    await pool.query('DELETE FROM posts WHERE post_id = ?', [post_id]);
+ 
+    res.json({ success: true, message: '게시글이 삭제되었습니다.' });
+  } catch (err) {
+    console.error('게시글 삭제 에러:', err);
     res.status(500).json({ message: err.message });
   }
 });

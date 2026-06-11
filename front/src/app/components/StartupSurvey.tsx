@@ -51,7 +51,7 @@ export default function StartupSurvey({ onComplete }: StartupSurveyProps) {
         }
       } catch (error) {
         console.error("사업 분야 카테고리를 가져오는 중 실패:", error);
-        setFields(["IT/소프트웨어", "제조/하드웨어", "바이오/헬스케어", "콘텐츠/미디어", "기타"]);
+        setFields(["AI/기술창업", "푸드/외식", "카페/제과", "친환경", "시니어/돌봄", "콘텐츠", "공간/오프라인", "디지털서비스", "교육", "미용/뷰티", "기타"]);
       }
     };
     fetchFields();
@@ -62,22 +62,53 @@ export default function StartupSurvey({ onComplete }: StartupSurveyProps) {
   // ------------------------------------------------------------------------
   // 💡 [변경점] 일반 함수였던 handleSubmit을 FormEvent를 받는 핸들러로 수정.
   // <form onSubmit={...}> 구조와 결합하여 웹 접근성 및 엔터키 제출을 지원합니다.
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault(); // 💡 [변경점] form 자체 제출로 인한 페이지 새로고침 방지
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
 
-    // 필수 입력 항목 유효성 체크
-    if (!target || !history || !region || !field) {
-      alert("대상, 창업이력, 지역, 사업분야를 모두 선택해주세요.");
+  if (!target || !history || !region || !field) {
+    alert("대상, 창업이력, 지역, 사업분야를 모두 선택해주세요.");
     return;
   }
 
-  // 변경된 항목 구조에 맞춰 localStorage 저장 키 변경
+  const user_id = localStorage.getItem("user_id");
+  if (!user_id) {
+    alert("로그인이 필요합니다.");
+    return;
+  }
+
+  // localStorage 저장 (기존 유지)
   localStorage.setItem("userTarget", target);
   localStorage.setItem("userHistory", history);
   localStorage.setItem("userRegion", region);
   localStorage.setItem("userField", field);
   localStorage.setItem("userTech", tech);
   localStorage.setItem("userIdea", idea);
+
+  // DB 저장
+  try {
+    const response = await fetch("/api/survey", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id,
+        target,
+        history,
+        region,
+        field,
+        tech,
+        idea,
+      }),
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      alert(data.message || "저장 중 오류가 발생했습니다.");
+      return;
+    }
+  } catch (error) {
+    console.error("설문 저장 실패:", error);
+    alert("서버 연결 실패! 백엔드 서버가 켜져 있는지 확인하세요.");
+    return;
+  }
 
   onComplete();
 };

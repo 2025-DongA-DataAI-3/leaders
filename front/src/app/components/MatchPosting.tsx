@@ -1,57 +1,56 @@
 import { useState, useEffect, ReactNode } from 'react';
-import { Calendar as CalendarIcon, List, Bookmark, Clock, DollarSign, X, ChevronLeft, ChevronRight, Banknote, GraduationCap, Building2 } from 'lucide-react';
+import { Calendar as CalendarIcon, List, Bookmark, Clock, X, ChevronLeft, ChevronRight, Banknote, GraduationCap, Building2, HelpCircle } from 'lucide-react';
 
-type SupportType = '창업자금 지원' | '창업교육지원' | '창업공간지원';
+type SupportType = '창업자금 지원' | '창업교육지원' | '창업공간지원' | '기타';
 
 interface Program {
   id: string;
   title: string;
   agency: string;
+  startDate: string;
   deadline: string;
-  dday: number;
-  amount: string;
-  category: string;
+  dday: number | null;
   supportType: SupportType;
-  summary: string;
+  region: string;
   url: string;
 }
 
 type ViewMode = 'list' | 'calendar';
 
-const PROGRAMS: Program[] = [
-  { id: '1',  title: '청년창업사관학교 12기',     agency: '중소벤처기업부',       deadline: '2026-05-25', dday: 18, amount: '최대 1억원',           category: 'IT/소프트웨어',   supportType: '창업자금 지원', summary: '만 39세 이하 청년 창업자에게 사업화 자금 및 전담 멘토링을 제공하는 집중 육성 프로그램', url: 'https://www.k-startup.go.kr' },
-  { id: '2',  title: '예비창업패키지',             agency: '창업진흥원',           deadline: '2026-06-10', dday: 34, amount: '최대 1억원',           category: '제조/생산',       supportType: '창업자금 지원', summary: '창업 전 단계의 예비 창업자를 대상으로 사업화 자금과 창업 교육을 패키지로 지원', url: 'https://www.k-startup.go.kr' },
-  { id: '3',  title: '초기창업패키지',             agency: '창업진흥원',           deadline: '2026-06-20', dday: 44, amount: '최대 1억원',           category: '유통/서비스',     supportType: '창업자금 지원', summary: '창업 3년 이내 초기 창업기업에 사업화 자금을 지원하여 빠른 시장 안착을 돕는 프로그램', url: 'https://www.k-startup.go.kr' },
-  { id: '4',  title: '재도전 성공패키지',          agency: '중소벤처기업부',       deadline: '2026-07-01', dday: 55, amount: '최대 5천만원',         category: '바이오/헬스케어', supportType: '창업자금 지원', summary: '폐업 후 재창업을 준비 중인 창업자에게 사업화 자금과 심리 회복 상담까지 지원', url: 'https://www.k-startup.go.kr' },
-  { id: '5',  title: 'TIPS(민간투자주도형 R&D)',   agency: '중소벤처기업부',       deadline: '2026-07-20', dday: 74, amount: '최대 5억원',           category: 'IT/소프트웨어',   supportType: '창업자금 지원', summary: '엑셀러레이터 투자 연계로 기술 창업기업에 R&D 자금을 최대 5억원 매칭 지원', url: 'https://www.k-startup.go.kr' },
-  { id: '6',  title: '창업도약패키지',             agency: '창업진흥원',           deadline: '2026-06-25', dday: 49, amount: '최대 3억원',           category: '친환경/에너지',   supportType: '창업자금 지원', summary: '창업 3~7년의 도약기 기업에 사업 확장을 위한 자금과 전략 컨설팅을 집중 지원', url: 'https://www.k-startup.go.kr' },
-  { id: '7',  title: '창업진흥원 온라인 창업스쿨', agency: '창업진흥원',           deadline: '2026-06-15', dday: 39, amount: '무료',                 category: 'IT/소프트웨어',   supportType: '창업교육지원',  summary: '비즈니스 모델 설계부터 투자 유치까지 창업 전 과정을 온라인으로 학습할 수 있는 무료 교육', url: 'https://www.k-startup.go.kr' },
-  { id: '8',  title: 'K-Startup 글로벌 창업교육', agency: '중소벤처기업부',       deadline: '2026-06-30', dday: 54, amount: '교육비 전액 지원',     category: '유통/서비스',     supportType: '창업교육지원',  summary: '글로벌 시장 진출을 목표로 하는 창업자를 위한 해외 멘토 매칭 및 현지화 전략 교육', url: 'https://www.k-startup.go.kr' },
-  { id: '9',  title: '소상공인 창업학교',          agency: '소상공인시장진흥공단', deadline: '2026-07-10', dday: 64, amount: '무료',                 category: '유통/서비스',     supportType: '창업교육지원',  summary: '소규모 점포 창업을 준비하는 예비 소상공인 대상 경영·세무·마케팅 실무 교육 과정', url: 'https://www.semas.or.kr' },
-  { id: '10', title: '여성기업 창업교육 프로그램', agency: '여성기업종합지원센터', deadline: '2026-07-05', dday: 59, amount: '교육비 80% 지원',     category: '유통/서비스',     supportType: '창업교육지원',  summary: '여성 예비창업자 및 초기 창업자를 위한 비즈니스 실무 교육과 네트워킹 프로그램', url: 'https://www.wbiz.or.kr' },
-  { id: '11', title: 'K-스타트업 센터 입주',       agency: '창업진흥원',           deadline: '2026-07-15', dday: 69, amount: '공간 무상 지원',       category: '친환경/에너지',   supportType: '창업공간지원',  summary: '창업 초기 기업에 사무 공간과 회의실, 네트워킹 프로그램을 무료로 제공하는 입주 지원', url: 'https://www.k-startup.go.kr' },
-  { id: '12', title: '청년창업허브 입주기업 모집', agency: '서울시',               deadline: '2026-06-28', dday: 52, amount: '임대료 최대 80% 감면', category: 'IT/소프트웨어',   supportType: '창업공간지원',  summary: '서울 소재 만 39세 이하 청년 창업자에게 시세 대비 저렴한 오피스 공간과 공용 장비 제공', url: 'https://startup.seoul.go.kr' },
-  { id: '13', title: '메이커스페이스 전문랩 입주', agency: '창업진흥원',           deadline: '2026-07-25', dday: 79, amount: '장비 이용 무료',       category: '제조/생산',       supportType: '창업공간지원',  summary: '시제품 제작이 필요한 하드웨어·제조 창업자에게 3D 프린터 등 전문 장비와 작업 공간 제공', url: 'https://www.k-startup.go.kr' },
-];
-
 const SUPPORT_TYPE_CONFIG: Record<SupportType, { color: string; bg: string; lightBg: string; icon: ReactNode }> = {
   '창업자금 지원': { color: '#00C9A7', bg: 'bg-[#00C9A7]', lightBg: '#E0F7F3', icon: <Banknote className="w-4 h-4" /> },
   '창업교육지원':  { color: '#8B5CF6', bg: 'bg-[#8B5CF6]', lightBg: '#EDE9FE', icon: <GraduationCap className="w-4 h-4" /> },
   '창업공간지원':  { color: '#F59E0B', bg: 'bg-[#F59E0B]', lightBg: '#FEF3C7', icon: <Building2 className="w-4 h-4" /> },
-};
-
-const CATEGORY_MAP: Record<string, { label: string; bg: string }> = {
-  'IT/소프트웨어':   { label: 'IT/소프트웨어',   bg: 'bg-[#8B5CF6]' },
-  '제조/생산':       { label: '제조/생산',       bg: 'bg-[#3B82F6]' },
-  '유통/서비스':     { label: '유통/서비스',     bg: 'bg-[#F59E0B]' },
-  '바이오/헬스케어': { label: '바이오/헬스케어', bg: 'bg-[#10B981]' },
-  '친환경/에너지':   { label: '친환경/에너지',   bg: 'bg-[#22C55E]' },
+  '기타':          { color: '#6B7280', bg: 'bg-[#6B7280]', lightBg: '#F3F4F6', icon: <HelpCircle className="w-4 h-4" /> },
 };
 
 const MONTH_NAMES   = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
 const DAYS_IN_MONTH = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 const DAYS_OF_WEEK  = ['일', '월', '화', '수', '목', '금', '토'];
 const STORAGE_KEY   = 'savedPrograms';
+
+// ── 유틸 함수 ──
+
+function mapSupportType(field: string): SupportType {
+  if (field.includes('사업화')) return '창업자금 지원';
+  if (field.includes('교육') || field.includes('멘토링') || field.includes('컨설팅')) return '창업교육지원';
+  if (field.includes('공간') || field.includes('시설') || field.includes('보육')) return '창업공간지원';
+  return '기타';
+}
+
+function calcDday(endDate: string | null): number | null {
+  if (!endDate || endDate.startsWith('0000') || endDate.startsWith('1899')) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
+  return Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function formatDate(dateStr: string | null): string {
+  if (!dateStr || dateStr.startsWith('0000') || dateStr.startsWith('1899')) return '미정';
+  return dateStr.slice(0, 10);
+}
 
 // ── 로컬 컴포넌트 ──
 
@@ -161,21 +160,43 @@ function Pagination({ currentPage, totalPages, onPageChange }: { currentPage: nu
 
 export default function MatchPosting() {
   const [viewMode, setViewMode]                 = useState<ViewMode>('list');
+  const [programs, setPrograms]                 = useState<Program[]>([]);
   const [savedPrograms, setSavedPrograms]       = useState<string[]>([]);
   const [selectedMonth, setSelectedMonth]       = useState<number>(5);
   const [searchKeyword, setSearchKeyword]       = useState('');
-  const [filterCategory, setFilterCategory]     = useState('all');
   const [activeTab, setActiveTab]               = useState<'전체' | SupportType>('전체');
-  const [isNotificationOn, setIsNotificationOn] = useState(false); // 초기값 false (꺼진 상태)
+  const [isNotificationOn, setIsNotificationOn] = useState(false);
   const [isModalOpen, setIsModalOpen]           = useState(false);
   const [currentPage, setCurrentPage]           = useState(1);
-  const [showMyPosts, setShowMyPosts] = useState(false);
+  const [showMyPosts, setShowMyPosts]           = useState(false);
 
+  // 스크랩 목록 로드
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try { setSavedPrograms(JSON.parse(saved)); } catch { setSavedPrograms([]); }
     }
+  }, []);
+
+  // 공고 데이터 로드
+  useEffect(() => {
+    fetch('/api/announcements')
+      .then((res) => res.json())
+      .then((data) => {
+        const mapped: Program[] = data.map((row: any) => ({
+          id: String(row.announcement_id),
+          title: row.title,
+          agency: row.organization,
+          startDate: formatDate(row.start_date),
+          deadline: formatDate(row.end_date),
+          dday: calcDday(row.end_date),
+          supportType: mapSupportType(row.support_field),
+          region: row.region,
+          url: row.detail_url,
+        }));
+        setPrograms(mapped);
+      })
+      .catch((err) => console.error('공고 조회 실패:', err));
   }, []);
 
   const toggleSave = (id: string) => {
@@ -186,15 +207,14 @@ export default function MatchPosting() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newSaved));
   };
 
-  const filteredPrograms = PROGRAMS.filter((p) => {
-  const matchesType     = activeTab === '전체' || p.supportType === activeTab;
-  const matchesCategory = filterCategory === 'all' || p.category === filterCategory;
-  const matchesSearch   =
-    p.title.toLowerCase().includes(searchKeyword.toLowerCase()) ||
-    p.agency.toLowerCase().includes(searchKeyword.toLowerCase());
-  const matchesMy       = !showMyPosts || savedPrograms.includes(p.id); // 추가
-  return matchesType && matchesCategory && matchesSearch && matchesMy;
-});
+  const filteredPrograms = programs.filter((p) => {
+    const matchesType   = activeTab === '전체' || p.supportType === activeTab;
+    const matchesSearch =
+      p.title.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+      p.agency.toLowerCase().includes(searchKeyword.toLowerCase());
+    const matchesMy     = !showMyPosts || savedPrograms.includes(p.id);
+    return matchesType && matchesSearch && matchesMy;
+  });
 
   const ITEMS_PER_PAGE    = 5;
   const totalPages        = Math.ceil(filteredPrograms.length / ITEMS_PER_PAGE) || 1;
@@ -204,14 +224,15 @@ export default function MatchPosting() {
   );
   const startDayOfWeek = new Date(2026, selectedMonth - 1, 1).getDay();
 
-  useEffect(() => { setCurrentPage(1); }, [searchKeyword, filterCategory, activeTab]);
+  useEffect(() => { setCurrentPage(1); }, [searchKeyword, activeTab]);
 
-  const supportTabs: Array<'전체' | SupportType> = ['전체', '창업자금 지원', '창업교육지원', '창업공간지원'];
+  const supportTabs: Array<'전체' | SupportType> = ['전체', '창업자금 지원', '창업교육지원', '창업공간지원', '기타'];
   const tabIcons: Record<string, ReactNode> = {
     '전체':         <List className="w-4 h-4" />,
     '창업자금 지원': <Banknote className="w-4 h-4" />,
     '창업교육지원':  <GraduationCap className="w-4 h-4" />,
     '창업공간지원':  <Building2 className="w-4 h-4" />,
+    '기타':          <HelpCircle className="w-4 h-4" />,
   };
 
   return (
@@ -225,28 +246,14 @@ export default function MatchPosting() {
         {/* 검색/필터 카드 */}
         <Card className="mb-6 p-5">
           <div className="flex flex-col sm:flex-row gap-3">
-            
-            {/* 왼쪽 절반: 검색 + 카테고리 + 필터가이드 */}
+
+            {/* 왼쪽 절반: 검색 + 필터가이드 */}
             <div className="flex gap-3 flex-1">
               <div className="flex-1">
                 <Input
                   placeholder="지원사업명 또는 주관기관 검색..."
                   value={searchKeyword}
                   onChange={(e) => setSearchKeyword(e.target.value)}
-                />
-              </div>
-              <div className="w-40">
-                <Select
-                  value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                  options={[
-                    { value: 'all',            label: '전체 카테고리' },
-                    { value: 'IT/소프트웨어',   label: 'IT/소프트웨어' },
-                    { value: '제조/생산',       label: '제조/생산' },
-                    { value: '유통/서비스',     label: '유통/서비스' },
-                    { value: '바이오/헬스케어', label: '바이오/헬스케어' },
-                    { value: '친환경/에너지',   label: '친환경/에너지' },
-                  ]}
                 />
               </div>
               <Button variant="secondary" onClick={() => setIsModalOpen(true)}>필터 가이드</Button>
@@ -258,8 +265,7 @@ export default function MatchPosting() {
                 onClick={() => setShowMyPosts(prev => !prev)}
                 className="flex items-center gap-3 px-5 py-2.5 rounded-xl transition-all"
                 style={{
-                  background: '#E0F7F3',  
-                  
+                  background: '#E0F7F3',
                   color: '#374151',
                   fontSize: '13px',
                   fontWeight: 600,
@@ -321,8 +327,7 @@ export default function MatchPosting() {
           </div>
         </div>
 
-        {/* 마감 알림 버튼 - 캘린더 뷰일 때만, 탭 아래 표시
-            ✅ 전체 탭처럼: ON → 민트 배경 + 흰 글씨 / OFF → 흰 배경 + 회색 글씨 */}
+        {/* 마감 알림 버튼 - 캘린더 뷰일 때만 */}
         {viewMode === 'calendar' && (
           <div className="flex items-center gap-2 mb-5">
             <button
@@ -379,7 +384,7 @@ export default function MatchPosting() {
                       color:      isActive ? 'white' : '#888',
                     }}
                   >
-                    {tab === '전체' ? PROGRAMS.length : PROGRAMS.filter((p) => p.supportType === tab).length}
+                    {tab === '전체' ? programs.length : programs.filter((p) => p.supportType === tab).length}
                   </span>
                 </button>
               );
@@ -392,9 +397,8 @@ export default function MatchPosting() {
           <div className="space-y-4">
             {paginatedPrograms.length > 0 ? (
               paginatedPrograms.map((program) => {
-                const isSaved      = savedPrograms.includes(program.id);
-                const typeConfig   = SUPPORT_TYPE_CONFIG[program.supportType];
-                const categoryInfo = CATEGORY_MAP[program.category] || { label: program.category, bg: 'bg-[#00C9A7]' };
+                const isSaved    = savedPrograms.includes(program.id);
+                const typeConfig = SUPPORT_TYPE_CONFIG[program.supportType];
                 return (
                   <div key={program.id} className="bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                     <div className="flex">
@@ -407,17 +411,20 @@ export default function MatchPosting() {
                                 style={{ background: typeConfig.lightBg, color: typeConfig.color }}>
                                 {typeConfig.icon}{program.supportType}
                               </span>
-                              <Badge variant={program.dday <= 20 ? 'danger' : 'success'}>D-{program.dday}</Badge>
-                              <Badge className={`${categoryInfo.bg} text-white`}>{categoryInfo.label}</Badge>
+                              <Badge variant={program.dday !== null && program.dday <= 20 ? 'danger' : 'success'}>
+                                {program.dday !== null ? `D-${program.dday}` : '상시'}
+                              </Badge>
+                              {program.region && (
+                                <Badge className="bg-gray-100 text-gray-600">{program.region}</Badge>
+                              )}
                             </div>
                             <h3 className="text-lg font-semibold text-gray-900 mb-1">{program.title}</h3>
-                            <p className="mb-3 text-gray-500 leading-snug" style={{ fontSize: '13px' }}>{program.summary}</p>
                             <div className="flex items-center gap-3 flex-wrap text-gray-400" style={{ fontSize: '13px' }}>
                               <span className="font-medium text-gray-600">{program.agency}</span>
                               <span>·</span>
-                              <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> 마감 {program.deadline}</span>
-                              <span>·</span>
-                              <span className="flex items-center gap-1"><DollarSign className="w-3 h-3" /> {program.amount}</span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" /> {program.startDate} ~ {program.deadline}
+                              </span>
                             </div>
                           </div>
                           <div className="flex sm:flex-col gap-2 min-w-[120px]">
@@ -492,7 +499,7 @@ export default function MatchPosting() {
             <h3 className="text-base font-semibold text-gray-900 mb-4">스크랩한 지원사업 명단</h3>
             {savedPrograms.length > 0 ? (
               <div className="grid gap-3 sm:grid-cols-2">
-                {PROGRAMS.filter((p) => savedPrograms.includes(p.id)).map((program) => {
+                {programs.filter((p) => savedPrograms.includes(p.id)).map((program) => {
                   const typeConfig = SUPPORT_TYPE_CONFIG[program.supportType];
                   return (
                     <div key={program.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100">
@@ -500,7 +507,9 @@ export default function MatchPosting() {
                         <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: typeConfig.color }} />
                         <div className="truncate">
                           <div className="font-medium text-sm text-gray-900 truncate">{program.title}</div>
-                          <div className="text-xs text-gray-500">마감: {program.deadline} (D-{program.dday})</div>
+                          <div className="text-xs text-gray-500">
+                            마감: {program.deadline}{program.dday !== null ? ` (D-${program.dday})` : '(상시)'}
+                          </div>
                         </div>
                       </div>
                       <IconButton icon={<X className="w-3 h-3" />} variant="danger" onClick={() => toggleSave(program.id)} />
@@ -518,7 +527,7 @@ export default function MatchPosting() {
       {/* 필터 가이드 모달 */}
       <Dialog isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="필터 적용 가이드">
         <p className="text-sm text-gray-600 mb-4 leading-relaxed">
-          지원 유형 탭으로 창업자금·교육·공간 지원을 구분하고, 카테고리 필터와 검색창으로 원하는 공고를 찾을 수 있습니다. 스크랩 버튼을 누르면 캘린더에 자동 맵핑됩니다.
+          지원 유형 탭으로 창업자금·교육·공간 지원을 구분하고, 검색창으로 원하는 공고를 찾을 수 있습니다. 스크랩 버튼을 누르면 캘린더에 자동 맵핑됩니다.
         </p>
         <div className="space-y-2 mb-4">
           {(Object.entries(SUPPORT_TYPE_CONFIG) as [SupportType, typeof SUPPORT_TYPE_CONFIG[SupportType]][]).map(([type, config]) => (

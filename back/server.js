@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import authRouter from './src/routes/auth.js'
 import pool from './src/db.js'
 import postsRouter from './src/routes/posts.js'
+import announcementsRouter from './src/routes/announcements.js'
 
 dotenv.config();
 
@@ -12,7 +13,7 @@ app.use(cors());
 app.use(express.json());
 app.use('/api/posts', postsRouter); //커뮤니티
 app.use('/oauth', authRouter); // 소셜 로그인
-
+app.use('/api/announcements', announcementsRouter); // 공고 추천
 // ==========================================
 // 📊 트렌드 API
 // ==========================================

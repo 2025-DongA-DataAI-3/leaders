@@ -41,11 +41,17 @@ function mapSupportType(field: string): SupportType {
 
 function calcDday(endDate: string | null): number | null {
   if (!endDate || endDate.startsWith('0000') || endDate.startsWith('1899')) return null;
+
+  const datePart = endDate.slice(0, 10); // 'YYYY-MM-DD'
+  const [y, m, d] = datePart.split('-').map(Number);
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const end = new Date(endDate);
+
+  const end = new Date(y, m - 1, d);
   end.setHours(0, 0, 0, 0);
-  return Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+  return Math.round((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 function formatDate(dateStr: string | null): string {
@@ -163,7 +169,7 @@ export default function MatchPosting() {
   const [viewMode, setViewMode]                 = useState<ViewMode>('list');
   const [programs, setPrograms]                 = useState<Program[]>([]);
   const [savedPrograms, setSavedPrograms]       = useState<string[]>([]);
-  const [selectedMonth, setSelectedMonth]       = useState<number>(5);
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [searchKeyword, setSearchKeyword]       = useState('');
   const [activeTab, setActiveTab]               = useState<'전체' | SupportType>('전체');
   const [isNotificationOn, setIsNotificationOn] = useState(false);
@@ -171,13 +177,28 @@ export default function MatchPosting() {
   const [currentPage, setCurrentPage]           = useState(1);
   const [showMyPosts, setShowMyPosts]           = useState(false);
 
-  // 스크랩 목록 로드
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try { setSavedPrograms(JSON.parse(saved)); } catch { setSavedPrograms([]); }
-    }
-  }, []);
+  // 스크랩 목록 로드 (localStorage 대신 DB)
+useEffect(() => {
+  const user_id = localStorage.getItem('user_id');
+  if (!user_id) return;
+
+  fetch(`/api/announcements/bookmarks?user_id=${user_id}`)
+    .then((res) => res.json())
+    .then((data) => {
+      if (Array.isArray(data)) {
+        setSavedPrograms(data.map(String));
+      }
+    })
+    .catch((err) => console.error('스크랩 목록 조회 실패:', err));
+}, []);
+useEffect(() => {
+  const user_id = localStorage.getItem('user_id');
+  if (!user_id) return;
+  fetch(`/api/announcements/alert-setting?user_id=${user_id}`)
+    .then((res) => res.json())
+    .then((data) => setIsNotificationOn(!!data.enabled))
+    .catch((err) => console.error('알림설정 조회 실패:', err));
+}, []);
 
   useEffect(() => {
     const user_id = localStorage.getItem('user_id');
@@ -212,13 +233,41 @@ export default function MatchPosting() {
       });
   }, [showMyPosts]);
 
-  const toggleSave = (id: string) => {
-    const newSaved = savedPrograms.includes(id)
-      ? savedPrograms.filter((p) => p !== id)
-      : [...savedPrograms, id];
-    setSavedPrograms(newSaved);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newSaved));
-  };
+  const toggleSave = async (id: string) => {
+  const user_id = localStorage.getItem('user_id');
+  if (!user_id) {
+    alert('로그인이 필요합니다.');
+    return;
+  }
+
+  const isSaved = savedPrograms.includes(id);
+  const newSaved = isSaved
+    ? savedPrograms.filter((p) => p !== id)
+    : [...savedPrograms, id];
+  setSavedPrograms(newSaved);
+
+  try {
+     if (isSaved) {
+      await fetch('/api/announcements/bookmarks', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id, announcement_id: id }),
+      });
+    } else {
+      await fetch('/api/announcements/bookmarks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id, announcement_id: id }),
+      });
+      // 스크랩 직후 알림 즉시 생성 트리거 (벨 아이콘은 30초 폴링으로 반영)
+      fetch(`/api/announcements/notifications?user_id=${user_id}`).catch(() => {});
+    }
+  } catch (err) {
+    console.error('스크랩 처리 실패:', err);
+    // 실패 시 롤백
+    setSavedPrograms(savedPrograms);
+  }
+};
 
   const baseFilteredPrograms = programs.filter((p) => {
     const matchesSearch =
@@ -365,7 +414,18 @@ export default function MatchPosting() {
         {viewMode === 'calendar' && (
           <div className="flex items-center gap-2 mb-5">
             <button
-              onClick={() => setIsNotificationOn(!isNotificationOn)}
+              onClick={() => {
+  const user_id = localStorage.getItem('user_id');
+  const newVal = !isNotificationOn;
+  setIsNotificationOn(newVal);
+  if (user_id) {
+    fetch('/api/announcements/alert-setting', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id, enabled: newVal }),
+    });
+  }
+}}
               className="flex items-center gap-2 px-4 py-2 rounded-full border transition-all"
               style={{
                 background:  isNotificationOn ? '#00C9A7' : 'white',
@@ -507,31 +567,28 @@ export default function MatchPosting() {
               {DAYS_OF_WEEK.map((day) => <div key={day} className="py-2">{day}</div>)}
             </div>
             <div className="grid grid-cols-7 gap-2">
-              {Array.from({ length: startDayOfWeek }).map((_, idx) => (
-                <div key={`empty-${idx}`} className="aspect-square opacity-0" />
-              ))}
               {Array.from({ length: DAYS_IN_MONTH[selectedMonth - 1] }, (_, i) => i + 1).map((day) => {
-                const dateStr     = `2026-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const dayPrograms = filteredPrograms.filter((p) => p.deadline === dateStr && savedPrograms.includes(p.id));
-                return (
-                  <div key={day} className="aspect-square p-2 rounded-xl border border-gray-100 flex flex-col justify-between hover:bg-gray-50 transition-colors">
-                    <span className="text-sm font-medium text-gray-700">{day}</span>
-                    {dayPrograms.length > 0 && (
-                      <div className="space-y-1 overflow-hidden">
-                        {dayPrograms.map((program) => {
-                          const typeConfig = SUPPORT_TYPE_CONFIG[program.supportType];
-                          return (
-                            <div key={program.id} className="text-[10px] px-1.5 py-0.5 rounded text-white truncate font-medium"
-                              style={{ background: typeConfig.color }} title={program.title}>
-                              {program.title}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+  const dateStr     = `2026-${String(selectedMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  const dayPrograms = filteredPrograms.filter((p) => p.deadline === dateStr && savedPrograms.includes(p.id));
+  return (
+    <div key={day} className="aspect-square p-2 rounded-xl border border-gray-100 flex flex-col hover:bg-gray-50 transition-colors overflow-hidden">
+      <span className="text-sm font-medium text-gray-700 mb-1">{day}</span>
+      {dayPrograms.length > 0 && (
+        <div className="space-y-1 overflow-hidden">
+          {dayPrograms.map((program) => {
+            const typeConfig = SUPPORT_TYPE_CONFIG[program.supportType];
+            return (
+              <div key={program.id} className="text-sn px-1.5 py-1 rounded text-white font-medium whitespace-nowrap overflow-hidden text-ellipsis"
+                style={{ background: typeConfig.color }} title={program.title}>
+                {program.title}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+})}
             </div>
             <Divider className="my-6" />
             <h3 className="text-base font-semibold text-gray-900 mb-4">스크랩한 지원사업 명단</h3>

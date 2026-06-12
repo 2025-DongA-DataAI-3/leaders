@@ -56,14 +56,18 @@ interface Notification {
   link: string;
 }
 
-// 알림 더미 데이터 (💡 백엔드 API 연결 시 useQuery 등의 기본값이나 초기 스켈레톤으로 활용)
-const initialNotifications: Notification[] = [
-  { id: "n1", type: "keyword_trend", title: "AI 에이전트 키워드 급등", body: "'AI 에이전트'가 이번 주 트렌드 1위로 진입했습니다.", timestamp: "10분 전", isRead: false, link: "/insight/AI 에이전트" },
-  { id: "n2", type: "new_announcement", title: "새 공고: K-스타트업 2026 모집", body: "관심 분야(IT/소프트웨어)에 새로운 지원 공고가 등록되었습니다.", timestamp: "1시간 전", isRead: false, link: "/match-posting" },
-  { id: "n3", type: "deadline_alert", title: "마감 임박 D-3: 청년창업사관학교 12기", body: "스크랩한 공고 마감이 3일 남았습니다. 서둘러 확인하세요.", timestamp: "3시간 전", isRead: false, link: "/match-posting" },
-  { id: "n4", type: "keyword_trend", title: "SaaS 플랫폼 키워드 상승", body: "'SaaS 플랫폼'이 지난주 대비 검색량 38% 증가했습니다.", timestamp: "어제", isRead: true, link: "/insight/SaaS 플랫폼" },
-  { id: "n5", type: "new_announcement", title: "새 공고: 초기창업패키지 2026", body: "관심 분야(바이오/헬스케어)에 새로운 지원 공고가 등록되었습니다.", timestamp: "2일 전", isRead: true, link: "/match-posting" },
-];
+// 알림 타임스탬프 상대시간 변환 유틸
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return '방금 전';
+  if (minutes < 60) return `${minutes}분 전`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}시간 전`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return '어제';
+  return `${days}일 전`;
+}
 
 // 알림 타입별 Lucide 아이콘 매핑 객체
 const notificationIcon = { keyword_trend: TrendingUp, new_announcement: FileText, deadline_alert: Clock };
@@ -400,10 +404,38 @@ export default function Root() {
   const [showCustomerService, setShowCustomerService] = useState(false);
   const [closingPanel, setClosingPanel] = useState<"chatbot" | "cs" | null>(null); 
   const [isChatExpanded, setIsChatExpanded] = useState(false);
-  // 알림 동적 상태 배열 (💡 백엔드 실시간 알림 API 연결 대상)
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
-
+  
+  // 알림 동적 상태 배열 (백엔드 API 연동)
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const isLoggedIn = localStorage.getItem("isLoggedIn");
+
+  useEffect(() => {
+  const user_id = localStorage.getItem('user_id');
+  if (!user_id) return;
+
+  const fetchNotifications = () => {
+    fetch(`/api/announcements/notifications?user_id=${user_id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!Array.isArray(data)) return;
+        const mapped: Notification[] = data.map((row: any) => ({
+          id: row.notification_id,
+          type: row.type,
+          title: row.message,
+          body: row.type === 'deadline_alert' ? '스크랩한 공고 마감이 임박했습니다.' : '',
+          timestamp: timeAgo(row.created_at),
+          isRead: !!row.is_read,
+          link: '/match-posting',
+        }));
+        setNotifications(mapped);
+      })
+      .catch((err) => console.error('알림 조회 실패:', err));
+  };
+
+  fetchNotifications();
+  const interval = setInterval(fetchNotifications, 5000); // 30초마다 폴링
+  return () => clearInterval(interval);
+}, []);
 
   /* ------------------------------------------------------------------------
      🛡️ [방어벽 시퀀스] 유저 상태별 온보딩 & 진단창 필터 순차 실행 엔진
@@ -492,18 +524,25 @@ export default function Root() {
      ------------------------------------------------------------------------ */
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  // 알림 클릭 시 읽음 스위칭 처리 후 해당 도메인 링크로 네비게이션 이동
+   // 알림 클릭 시 읽음 스위칭 처리 후 해당 도메인 링크로 네비게이션 이동
   const handleNotificationClick = (notif: Notification) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n))
     );
+    fetch(`/api/announcements/notifications/${notif.id}/read`, { method: 'PATCH' });
     setShowNotifications(false);
     navigate(notif.link);
   };
 
   // 모두 읽음 클릭 핸들러
   const handleMarkAllRead = () => {
+    const user_id = localStorage.getItem('user_id');
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    fetch('/api/announcements/notifications/read-all', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id }),
+    });
   };
   // 닫기 핸들러 (애니메이션 후 실제 상태 변경)
   const handleClosePanel = (panel: "chatbot" | "cs") => {

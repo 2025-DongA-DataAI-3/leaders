@@ -126,6 +126,23 @@ app.post("/api/login", async (req, res) => {
   }
 });
 
+// 아이디 중복 확인
+app.get('/api/check-id', async (req, res) => {
+  const { userId } = req.query;
+
+  if (!userId) {
+    return res.status(400).json({ available: false, message: "아이디를 입력해주세요." });
+  }
+
+  try {
+    const [existing] = await pool.query("SELECT * FROM users WHERE user_id = ?", [userId]);
+    res.json({ available: existing.length === 0 });
+  } catch (error) {
+    console.error("중복확인 에러:", error);
+    res.status(500).json({ available: false, message: "서버 오류" });
+  }
+});
+
 // ==========================================
 // 🗑️ 회원탈퇴
 // ==========================================

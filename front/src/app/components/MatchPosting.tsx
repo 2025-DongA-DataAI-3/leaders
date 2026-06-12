@@ -13,6 +13,7 @@ interface Program {
   supportType: SupportType;
   region: string;
   url: string;
+  matchScore: number;
 }
 
 type ViewMode = 'list' | 'calendar';
@@ -21,7 +22,7 @@ const SUPPORT_TYPE_CONFIG: Record<SupportType, { color: string; bg: string; ligh
   '창업자금 지원': { color: '#00C9A7', bg: 'bg-[#00C9A7]', lightBg: '#E0F7F3', icon: <Banknote className="w-4 h-4" /> },
   '창업교육지원':  { color: '#8B5CF6', bg: 'bg-[#8B5CF6]', lightBg: '#EDE9FE', icon: <GraduationCap className="w-4 h-4" /> },
   '창업공간지원':  { color: '#F59E0B', bg: 'bg-[#F59E0B]', lightBg: '#FEF3C7', icon: <Building2 className="w-4 h-4" /> },
-  '기타':          { color: '#6B7280', bg: 'bg-[#6B7280]', lightBg: '#F3F4F6', icon: <HelpCircle className="w-4 h-4" /> },
+  '기타':        { color: '#3B82F6', bg: 'bg-[#3B82F6]', lightBg: '#DBEAFE', icon: <HelpCircle className="w-4 h-4" /> },
 };
 
 const MONTH_NAMES   = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
@@ -99,7 +100,7 @@ function Card({ children, className = '' }: { children: ReactNode; className?: s
 
 function Badge({ children, variant = 'default', className = '' }: { children: ReactNode; variant?: 'default' | 'success' | 'danger'; className?: string }) {
   const styles = {
-    default: "px-2 py-0.5 rounded-lg text-xs font-medium",
+    default: "px-2 py-0.5 rounded-lg text-xs font-medium bg-gray-100 text-gray-500",
     success: "px-2 py-0.5 rounded-lg font-semibold text-xs bg-teal-50 text-[#00C9A7]",
     danger:  "px-2 py-0.5 rounded-lg font-semibold text-xs bg-red-50 text-red-600",
   };
@@ -178,11 +179,19 @@ export default function MatchPosting() {
     }
   }, []);
 
-  // 공고 데이터 로드
   useEffect(() => {
-    fetch('/api/announcements')
+    const user_id = localStorage.getItem('user_id');
+    const endpoint = showMyPosts && user_id
+     ? `/api/announcements/recommend?user_id=${user_id}`
+     : '/api/announcements';
+
+    fetch(endpoint)
       .then((res) => res.json())
       .then((data) => {
+        if (!Array.isArray(data)) {
+          setPrograms([]);
+          return;
+        }
         const mapped: Program[] = data.map((row: any) => ({
           id: String(row.announcement_id),
           title: row.title,
@@ -193,11 +202,15 @@ export default function MatchPosting() {
           supportType: mapSupportType(row.support_field),
           region: row.region,
           url: row.detail_url,
+          matchScore: row.match_score ?? 0,
         }));
         setPrograms(mapped);
       })
-      .catch((err) => console.error('공고 조회 실패:', err));
-  }, []);
+      .catch((err) => {
+        console.error('공고 조회 실패:', err);
+        setPrograms([]);
+      });
+  }, [showMyPosts]);
 
   const toggleSave = (id: string) => {
     const newSaved = savedPrograms.includes(id)
@@ -207,18 +220,39 @@ export default function MatchPosting() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newSaved));
   };
 
-  const filteredPrograms = programs.filter((p) => {
-    const matchesType   = activeTab === '전체' || p.supportType === activeTab;
+  const baseFilteredPrograms = programs.filter((p) => {
     const matchesSearch =
       p.title.toLowerCase().includes(searchKeyword.toLowerCase()) ||
       p.agency.toLowerCase().includes(searchKeyword.toLowerCase());
-    const matchesMy     = !showMyPosts || savedPrograms.includes(p.id);
-    return matchesType && matchesSearch && matchesMy;
+    const matchesRecommend = !showMyPosts || p.matchScore > 1;
+    return matchesSearch && matchesRecommend;
+  });
+
+  const filteredPrograms = baseFilteredPrograms.filter((p) =>
+    activeTab === '전체' || p.supportType === activeTab
+  );
+
+  const sortedPrograms = [...filteredPrograms].sort((a, b) => {
+    const rank = (p: Program) => {
+      if (p.dday !== null && p.dday >= 0) return 0; // 마감 안됨 (D-day 있음)
+      if (p.dday === null) return 1;                // 상시
+      return 2;                                      // 마감
+    };
+    const ra = rank(a);
+    const rb = rank(b);
+    if (ra !== rb) return ra - rb;
+
+    if (showMyPosts && a.matchScore !== b.matchScore) {
+      return b.matchScore - a.matchScore;
+    }
+
+    if (ra === 0) return (a.dday as number) - (b.dday as number);
+   return 0;
   });
 
   const ITEMS_PER_PAGE    = 5;
-  const totalPages        = Math.ceil(filteredPrograms.length / ITEMS_PER_PAGE) || 1;
-  const paginatedPrograms = filteredPrograms.slice(
+  const totalPages        = Math.ceil(sortedPrograms.length / ITEMS_PER_PAGE) || 1;
+  const paginatedPrograms = sortedPrograms.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
     currentPage * ITEMS_PER_PAGE
   );
@@ -384,7 +418,7 @@ export default function MatchPosting() {
                       color:      isActive ? 'white' : '#888',
                     }}
                   >
-                    {tab === '전체' ? programs.length : programs.filter((p) => p.supportType === tab).length}
+                    {tab === '전체' ? baseFilteredPrograms.length : baseFilteredPrograms.filter((p) => p.supportType === tab).length}
                   </span>
                 </button>
               );
@@ -398,7 +432,10 @@ export default function MatchPosting() {
             {paginatedPrograms.length > 0 ? (
               paginatedPrograms.map((program) => {
                 const isSaved    = savedPrograms.includes(program.id);
-                const typeConfig = SUPPORT_TYPE_CONFIG[program.supportType];
+                const isExpired = program.dday !== null && program.dday < 0;
+                const typeConfig = isExpired
+                  ? { color: '#9CA3AF', bg: 'bg-[#9CA3AF]', lightBg: '#F3F4F6', icon: SUPPORT_TYPE_CONFIG[program.supportType].icon }
+                  : SUPPORT_TYPE_CONFIG[program.supportType];
                 return (
                   <div key={program.id} className="bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
                     <div className="flex">
@@ -411,8 +448,9 @@ export default function MatchPosting() {
                                 style={{ background: typeConfig.lightBg, color: typeConfig.color }}>
                                 {typeConfig.icon}{program.supportType}
                               </span>
-                              <Badge variant={program.dday !== null && program.dday <= 20 ? 'danger' : 'success'}>
-                                {program.dday !== null ? `D-${program.dday}` : '상시'}
+                              <Badge variant={isExpired ? 'default' : (program.dday !== null && program.dday <= 20 ? 'danger' : 'success')}
+                                className={isExpired ? 'bg-gray-100 text-gray-500' : ''}>
+                                {program.dday !== null ? (isExpired ? '마감' : `D-${program.dday}`) : '상시'}
                               </Badge>
                               {program.region && (
                                 <Badge className="bg-gray-100 text-gray-600">{program.region}</Badge>
@@ -508,7 +546,7 @@ export default function MatchPosting() {
                         <div className="truncate">
                           <div className="font-medium text-sm text-gray-900 truncate">{program.title}</div>
                           <div className="text-xs text-gray-500">
-                            마감: {program.deadline}{program.dday !== null ? ` (D-${program.dday})` : '(상시)'}
+                             마감: {program.deadline}{program.dday !== null ? (program.dday < 0 ? ' (마감)' : ` (D-${program.dday})`) : ' (상시)'}
                           </div>
                         </div>
                       </div>

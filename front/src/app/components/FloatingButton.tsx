@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, forwardRef, type ButtonHTMLAttributes, type ReactNode, cloneElement, isValidElement } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
-import { Activity, MessageCircle, X, Bell, TrendingUp, FileText, Clock, CheckCheck, HelpCircle, Mail, Phone, ChevronRight, GraduationCap, Send } from "lucide-react";
+import { Activity, MessageCircle, X, Bell, TrendingUp, FileText, Clock, CheckCheck, HelpCircle, Mail, Phone, ChevronRight, GraduationCap, Send, Maximize2, Minimize2 } from "lucide-react";
 import Onboarding from "./Onboarding";
 import StartupSurvey from "./StartupSurvey";
 
@@ -232,6 +232,8 @@ function CustomerServiceBox({ onClose }: CustomerServiceBoxProps) {
  */
 interface AIChatbotBoxProps {
   onClose: () => void;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
 }
 
 interface Message {
@@ -239,7 +241,7 @@ interface Message {
   content: string;
 }
 
-function AIChatbotBox({ onClose }: AIChatbotBoxProps) {
+function AIChatbotBox({ onClose, isExpanded, onToggleExpand }: AIChatbotBoxProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -310,13 +312,22 @@ function AIChatbotBox({ onClose }: AIChatbotBoxProps) {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-2xl w-96 h-[500px] flex flex-col border border-gray-200">
+    <div
+      className={`bg-white rounded-2xl shadow-2xl flex flex-col border border-gray-200 transition-all duration-300 ${
+        isExpanded ? "w-[480px] h-[700px]" : "w-96 h-[500px]"
+      }`}
+    >
       {/* 헤더 */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200" style={{ background: "linear-gradient(to right, #00C9A7, #00A88E)" }}>
         <h3 className="text-white font-semibold"> 창업 AI 챗봇</h3>
-        <RootIconButton onClick={onClose} className="text-white hover:bg-white/20 rounded-lg p-1 transition-colors">
-          <X className="w-5 h-5" />
-        </RootIconButton>
+        <div className="flex items-center gap-1">
+          <RootIconButton onClick={onToggleExpand} className="text-white hover:bg-white/20 rounded-lg p-1 transition-colors">
+            {isExpanded ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+          </RootIconButton>
+          <RootIconButton onClick={onClose} className="text-white hover:bg-white/20 rounded-lg p-1 transition-colors">
+            <X className="w-5 h-5" />
+          </RootIconButton>
+        </div>
       </div>
 
       {/* 대화 내역 */}
@@ -387,7 +398,8 @@ export default function Root() {
   const [showChatbot, setShowChatbot] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showCustomerService, setShowCustomerService] = useState(false);
-  
+  const [closingPanel, setClosingPanel] = useState<"chatbot" | "cs" | null>(null); 
+  const [isChatExpanded, setIsChatExpanded] = useState(false);
   // 알림 동적 상태 배열 (💡 백엔드 실시간 알림 API 연결 대상)
   const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
 
@@ -493,6 +505,15 @@ export default function Root() {
   const handleMarkAllRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   };
+  // 닫기 핸들러 (애니메이션 후 실제 상태 변경)
+  const handleClosePanel = (panel: "chatbot" | "cs") => {
+    setClosingPanel(panel);
+    setTimeout(() => {
+      if (panel === "chatbot") setShowChatbot(false);
+      else setShowCustomerService(false);
+      setClosingPanel(null);
+    }, 200); // 애니메이션 시간과 맞춤
+  };
 
   // 현재 활성화된 네비게이션 메뉴 스타일 판단 서브 가드
   const isActive = (path: string) => {
@@ -582,53 +603,95 @@ export default function Root() {
           <Outlet />
         </main>
 
+        
         {/* 우측 하단 유틸리티 플로팅 메뉴 그룹 */}
         <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
-          
-          {/* 튜토리얼 초기화 및 강제 재적용 버튼 */}
-          <RootIconButton
-            onClick={() => {
-              localStorage.removeItem("hasSeenOnboarding");
-              localStorage.removeItem("hasCompletedSurvey");
-              window.location.reload();
-            }}
-            className="flex items-center gap-2 px-5 py-3 rounded-full text-white shadow-2xl hover:shadow-3xl transition-all hover:scale-105 w-36 justify-center"
-            style={{ background: "linear-gradient(to right, #8B5CF6, #7C3AED)" }}
-            title="튜토리얼 다시보기"
-          >
-            <GraduationCap className="w-5 h-5" />
-            <span className="font-semibold text-sm">튜토리얼</span>
-          </RootIconButton>
 
-          {/* 고객센터 독립 모듈 인터랙션 트리거 */}
-          {showCustomerService ? (
-            <CustomerServiceBox onClose={() => setShowCustomerService(false)} />
-          ) : (
-            <RootIconButton
-              onClick={() => setShowCustomerService(true)}
-              className="flex items-center gap-2 px-5 py-3 rounded-full text-white shadow-2xl hover:shadow-3xl transition-all hover:scale-105 w-36 justify-center"
-              style={{ background: "linear-gradient(to right, #6366F1, #4F46E5)" }}
-            >
-              <HelpCircle className="w-5 h-5" />
-              <span className="font-semibold text-sm">고객센터</span>
-            </RootIconButton>
-          )}
-
-          {/* AI 챗봇 독립 모듈 인터랙션 트리거 */}
           {showChatbot ? (
-            <AIChatbotBox onClose={() => setShowChatbot(false)} />
+            <div className={closingPanel === "chatbot" ? "animate-panel-close" : "animate-panel-pop"}>
+              <AIChatbotBox
+                onClose={() => handleClosePanel("chatbot")}
+                isExpanded={isChatExpanded}
+                onToggleExpand={() => setIsChatExpanded((v) => !v)}
+              />
+            </div>
+          ) : showCustomerService ? (
+            <div className={closingPanel === "cs" ? "animate-panel-close" : "animate-panel-pop"}>
+              <CustomerServiceBox onClose={() => handleClosePanel("cs")} />
+            </div>
           ) : (
-            <RootIconButton
-              onClick={() => setShowChatbot(true)}
-              className="flex items-center gap-2 px-5 py-3 rounded-full text-white shadow-2xl hover:shadow-3xl transition-all hover:scale-105 w-36 justify-center"
-              style={{ background: "linear-gradient(to right, #00C9A7, #00A88E)" }}
-            >
-              <MessageCircle className="w-5 h-5" />
-              <span className="font-semibold text-sm">AI 챗봇</span>
-            </RootIconButton>
+            <>
+              {/* 튜토리얼 초기화 및 강제 재적용 버튼 */}
+              <RootIconButton
+                onClick={() => {
+                  localStorage.removeItem("hasSeenOnboarding");
+                  localStorage.removeItem("hasCompletedSurvey");
+                  window.location.reload();
+                }}
+                className="flex items-center gap-2 px-5 py-3 rounded-full text-white shadow-2xl hover:shadow-3xl transition-all hover:scale-105 w-36 justify-center"
+                style={{ background: "linear-gradient(to right, #8B5CF6, #7C3AED)" }}
+                title="튜토리얼 다시보기"
+              >
+                <GraduationCap className="w-5 h-5" />
+                <span className="font-semibold text-sm">튜토리얼</span>
+              </RootIconButton>
+
+              {/* 고객센터 독립 모듈 인터랙션 트리거 */}
+              <RootIconButton
+                onClick={() => setShowCustomerService(true)}
+                className="flex items-center gap-2 px-5 py-3 rounded-full text-white shadow-2xl hover:shadow-3xl transition-all hover:scale-105 w-36 justify-center"
+                style={{ background: "linear-gradient(to right, #6366F1, #4F46E5)" }}
+              >
+                <HelpCircle className="w-5 h-5" />
+                <span className="font-semibold text-sm">고객센터</span>
+              </RootIconButton>
+
+              {/* AI 챗봇 독립 모듈 인터랙션 트리거 */}
+              <RootIconButton
+                onClick={() => setShowChatbot(true)}
+                className="flex items-center gap-2 px-5 py-3 rounded-full text-white shadow-2xl hover:shadow-3xl transition-all hover:scale-105 w-36 justify-center"
+                style={{ background: "linear-gradient(to right, #00C9A7, #00A88E)" }}
+              >
+                <MessageCircle className="w-5 h-5" />
+                <span className="font-semibold text-sm">AI 챗봇</span>
+              </RootIconButton>
+            </>
           )}
 
         </div>
+
+        {/* 패널 오픈 애니메이션 (앱 아이콘에서 펼쳐지는 느낌) */}
+        <style>{`
+          @keyframes panelPop {
+            0% {
+              opacity: 0;
+              transform: scale(0.85) translate(15%, 15%);
+              transform-origin: bottom right;
+            }
+            100% {
+              opacity: 1;
+              transform: scale(1) translate(0%, 0%);
+            }
+          }
+          @keyframes panelClose {
+            0% {
+              opacity: 1;
+              transform: scale(1) translate(0%, 0%);
+            }
+            100% {
+              opacity: 0;
+              transform: scale(0.85) translate(15%, 15%);
+            }
+          }
+          .animate-panel-pop {
+            animation: panelPop 0.25s ease-out forwards;
+            transform-origin: bottom right;
+          }
+          .animate-panel-close {
+            animation: panelClose 0.2s ease-in forwards;
+            transform-origin: bottom right;
+          }
+        `}</style>
       </div>
     </>
   );

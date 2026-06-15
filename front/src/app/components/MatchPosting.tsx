@@ -173,7 +173,6 @@ export default function MatchPosting() {
   const [searchKeyword, setSearchKeyword]       = useState('');
   const [activeTab, setActiveTab]               = useState<'전체' | SupportType>('전체');
   const [isNotificationOn, setIsNotificationOn] = useState(false);
-  const [isModalOpen, setIsModalOpen]           = useState(false);
   const [currentPage, setCurrentPage]           = useState(1);
   const [showMyPosts, setShowMyPosts]           = useState(false);
 
@@ -330,7 +329,7 @@ useEffect(() => {
         <Card className="mb-6 p-5">
           <div className="flex flex-col sm:flex-row gap-3">
 
-            {/* 왼쪽 절반: 검색 + 필터가이드 */}
+            {/* 왼쪽 절반: 검색 */}
             <div className="flex gap-3 flex-1">
               <div className="flex-1">
                 <Input
@@ -339,7 +338,9 @@ useEffect(() => {
                   onChange={(e) => setSearchKeyword(e.target.value)}
                 />
               </div>
-              <Button variant="secondary" onClick={() => setIsModalOpen(true)}>필터 가이드</Button>
+              <Button variant="primary" onClick={() => setSearchKeyword(searchKeyword)}>
+                검색
+              </Button>
             </div>
 
             {/* 오른쪽 절반: 내 맞춤 공고 보기 버튼 */}
@@ -618,24 +619,6 @@ useEffect(() => {
           </Card>
         )}
       </div>
-
-      {/* 필터 가이드 모달 */}
-      <Dialog isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="필터 적용 가이드">
-        <p className="text-sm text-gray-600 mb-4 leading-relaxed">
-          지원 유형 탭으로 창업자금·교육·공간 지원을 구분하고, 검색창으로 원하는 공고를 찾을 수 있습니다. 스크랩 버튼을 누르면 캘린더에 자동 맵핑됩니다.
-        </p>
-        <div className="space-y-2 mb-4">
-          {(Object.entries(SUPPORT_TYPE_CONFIG) as [SupportType, typeof SUPPORT_TYPE_CONFIG[SupportType]][]).map(([type, config]) => (
-            <div key={type} className="flex items-center gap-2 text-sm text-gray-600">
-              <div className="w-3 h-3 rounded-full" style={{ background: config.color }} />
-              <span>{type}</span>
-            </div>
-          ))}
-        </div>
-        <div className="flex justify-end">
-          <Button variant="primary" onClick={() => setIsModalOpen(false)}>확인했습니다</Button>
-        </div>
-      </Dialog>
     </div>
   );
 }

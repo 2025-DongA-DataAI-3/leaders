@@ -1,220 +1,535 @@
+// KeywordMap.tsx — 전체 교체본
+
 import { useState, useEffect, useRef } from "react";
-import { TrendingUp, ChevronRight, Flame, ArrowLeft, Zap } from "lucide-react";
+import { TrendingUp, ChevronRight, ArrowLeft, Zap, ExternalLink, Newspaper } from "lucide-react";
 import * as d3 from "d3";
-
-
-interface BubbleData {
-  id: string;
-  keyword: string;
-  frequency: number;
-  changeRate: number;
-  similarity: number;
-  x: number;
-  y: number;
-  size: number;
-  category: string;
-  type: string;
+console.log("KeywordMap 새 버전 로드됨", new Date().toISOString());
+// ─────────────────────────────────────────────
+// 고정 키워드 하드코딩 데이터
+// ─────────────────────────────────────────────
+interface SeedAnalysis {
+  reason:       string;
+  startupItems: string[];
+  market:       string;
+  govLinks:     { label: string; url: string }[];
+  headlines:    { title: string; url: string }[];
+  category:     string;
+  
 }
 
-interface TrendRanking {
-  rank: number;
-  keyword: string;
-  change: string;
-  category: string;
-}
-
-interface LinkData {
-  source: string;
-  target: string;
-  similarity: number; 
-}
-
-const analysisData: Record<string, {
-  trend: string;
-  policy: string;
-  market: string;
-  news: string;
-  url: string;
-}> = {
-  "AI 에이전트": {
-    trend:  "GPT-4 등장 이후 업무 자동화 수요 폭발적 증가...",
-    policy: "중소벤처기업부 AI 바우처 지원사업, 2026년 예산 확대...",
-    market: "글로벌 AI 에이전트 시장 2026년 약 47조원 규모 전망...",
-    news:   "국내 주요 대기업 AI 에이전트 도입 본격화, 스타트업 협업 증가...",
-    url:    "https://techcrunch.com/ai-agents",
+const SEED_DATA: Record<string, SeedAnalysis> = {
+  스마트스토어: {
+    category: "AI/기술창업",
+    reason: "1인 창업자의 온라인 판매 진입 장벽이 낮아지면서 네이버 스마트스토어 신규 개설 수가 매년 증가하고 있습니다. 소자본으로 시작 가능한 구조와 SNS 연동 마케팅이 결합되며 주목받고 있습니다.",
+    startupItems: ["온라인 쇼핑몰", "핸드메이드 제품 판매", "리셀링 스토어", "디지털 콘텐츠 판매"],
+    market: "국내 이커머스 시장은 2024년 기준 약 228조원 규모로, 네이버 스마트스토어 입점 사업자 수는 60만 개를 돌파했습니다. 1인 셀러 비중이 전체의 70% 이상을 차지합니다.",
+    govLinks: [
+      { label: "소상공인시장진흥공단 온라인 판로 지원", url: "https://www.semas.or.kr" },
+      { label: "중소벤처기업부 디지털 전환 바우처", url: "https://www.mss.go.kr" },
+    ],
+    headlines: [
+      { title: "네이버 스마트스토어 60만 돌파…1인 셀러 전성시대", url: "https://n.news.naver.com" },
+      { title: "스마트스토어 월 매출 1000만원 달성 비결은?", url: "https://n.news.naver.com" },
+      { title: "정부, 소상공인 온라인 판로 지원 예산 확대", url: "https://n.news.naver.com" },
+    ],
   },
-  "비건 밀키트": {
-    trend:  "Z세대 중심으로 채식 인구 급증, 환경 의식 소비 확산...",
-    policy: "농림축산식품부 친환경 식품 창업 지원 공고 연 2회 모집...",
-    market: "국내 밀키트 시장 연 30% 성장, 비건 라인 수요 급증...",
-    news:   "마켓컬리 비건 라인 매출 전년比 3배, 쿠팡도 비건 카테고리 신설...",
-    url:    "https://platum.kr/vegan-mealkit",
+  전자책: {
+    category: "콘텐츠", 
+    reason: "지식 콘텐츠 소비가 디지털화되면서 전문가 개인이 직접 전자책을 제작·판매하는 흐름이 확산되고 있습니다. 크몽·클래스101 등 플랫폼 성장과 함께 수익화 모델로 주목받습니다.",
+    startupItems: ["전자책 출판", "지식 콘텐츠 플랫폼", "PDF 강의 판매", "뉴스레터 구독 비즈니스"],
+    market: "국내 전자책 시장은 연평균 15% 성장 중이며, 개인 작가의 셀프 퍼블리싱 비중이 2023년 대비 2배 이상 증가했습니다. 크몽 기준 전자책 카테고리 거래액이 전년 대비 40% 급증했습니다.",
+    govLinks: [
+      { label: "한국콘텐츠진흥원 1인 창작자 지원", url: "https://www.kocca.kr" },
+    ],
+    headlines: [
+      { title: "전자책 셀프 출판 시장 급성장…개인 작가 수익화 활발", url: "https://n.news.naver.com" },
+      { title: "크몽 전자책 거래액 전년比 40% 증가", url: "https://n.news.naver.com" },
+      { title: "지식 콘텐츠 플랫폼 클래스101, 전자책 카테고리 신설", url: "https://n.news.naver.com" },
+    ],
   },
-  "스마트팜": {
-    trend:  "식량 안보 이슈 + 기후변화로 실내농업 주목...",
-    policy: "농림부 스마트팜 혁신밸리 2026년 4개소 추가 조성 예정...",
-    market: "국내 스마트팜 시장 2025년 6조원 돌파 전망...",
-    news:   "만나CEA 3년만에 매출 100억 달성, 후속 투자 유치 성공...",
-    url:    "https://www.k-startup.go.kr/smartfarm",
+  무인카페: {
+    category: "푸드/외식",
+    reason: "인건비 부담과 비대면 소비 선호가 맞물리며 무인 카페 창업이 급증하고 있습니다. 소형 상가에서도 운영 가능한 구조로 초기 투자 비용 대비 수익성이 높아 1인 창업자에게 인기입니다.",
+    startupItems: ["무인 카페", "무인 아이스크림 할인점", "무인 스터디카페", "무인 편의점"],
+    market: "무인 점포 수는 2023년 기준 전국 5만 개를 돌파했습니다. 무인카페 창업 비용은 일반 카페 대비 30~50% 낮으며, 프랜차이즈 가맹 문의가 전년 대비 3배 이상 증가했습니다.",
+    govLinks: [
+      { label: "소상공인진흥공단 창업 지원 프로그램", url: "https://www.semas.or.kr" },
+      { label: "중소벤처기업부 혁신 창업 패키지", url: "https://www.mss.go.kr" },
+    ],
+    headlines: [
+      { title: "무인카페 전국 1만 개 돌파…인건비 절감 창업 인기", url: "https://n.news.naver.com" },
+      { title: "무인 점포 창업 열풍, 소자본 창업자 몰린다", url: "https://n.news.naver.com" },
+      { title: "무인카페 프랜차이즈 시장 경쟁 본격화", url: "https://n.news.naver.com" },
+    ],
   },
-  "펫테크": {
-    trend:  "반려동물 1500만 시대, 펫 관련 지출 연평균 12% 증가...",
-    policy: "농림축산식품부 반려동물 연관산업 육성 지원사업 모집 중...",
-    market: "국내 펫 시장 2026년 6조원 규모, 헬스케어·IT 융합 성장...",
-    news:   "퍼피레드 누적 투자 200억, 펫보험 가입률 전년比 2배 증가...",
-    url:    "https://www.venturesquare.net/pettech",
+  플리마켓: {
+    category: "공간/오프라인",
+    reason: "중고 거래 문화 확산과 핸드메이드·로컬 브랜드에 대한 소비자 관심이 높아지면서 플리마켓이 창업 테스트베드로 주목받고 있습니다. 低비용으로 브랜드를 검증할 수 있는 채널입니다.",
+    startupItems: ["핸드메이드 공예품 판매", "빈티지 의류 리셀링", "로컬 푸드 판매", "DIY 소품 브랜드"],
+    market: "서울시 공공 플리마켓 연간 방문객이 200만 명을 넘어섰습니다. 온라인 플리마켓 플랫폼과 오프라인 팝업을 연계하는 O2O 모델이 증가하며 시장이 확대되고 있습니다.",
+    govLinks: [
+      { label: "서울시 사회적경제 지원센터", url: "https://www.sehub.net" },
+    ],
+    headlines: [
+      { title: "플리마켓 창업 열풍…소자본 브랜드 테스트 공간으로", url: "https://n.news.naver.com" },
+      { title: "서울 성수동 플리마켓 방문객 100만 명 돌파", url: "https://n.news.naver.com" },
+      { title: "핸드메이드 브랜드, 플리마켓에서 온라인으로 확장", url: "https://n.news.naver.com" },
+    ],
   },
-  "디지털헬스케어": {
-    trend:  "고령화 + 의료비 증가로 예방·관리형 헬스케어 수요 급증...",
-    policy: "보건복지부 디지털헬스케어 규제 샌드박스 2026년 확대 운영...",
-    market: "글로벌 디지털헬스 시장 2027년 800조원 규모 전망...",
-    news:   "눔 기업가치 4조원, 국내 헬스케어 앱 MAU 전년比 40% 증가...",
-    url:    "https://mobiinside.co.kr/digital-healthcare",
+  AI교육: {
+    category: "교육",
+    reason: "생성형 AI 확산으로 AI 리터러시 수요가 폭발적으로 증가했습니다. 직장인·학생 대상 AI 활용 교육 시장이 형성되며 개인 강사 및 소규모 교육 스타트업의 창업이 이어지고 있습니다.",
+    startupItems: ["AI 활용 강의 플랫폼", "기업 대상 AI 교육 컨설팅", "어린이 코딩·AI 교육", "AI 프롬프트 튜터링"],
+    market: "국내 에듀테크 시장은 2025년 5조원 규모로 성장 전망입니다. AI 관련 교육 콘텐츠 수강자 수는 전년 대비 200% 이상 증가했으며, B2B AI 교육 시장도 빠르게 형성되고 있습니다.",
+    govLinks: [
+      { label: "과학기술정보통신부 AI 교육 바우처", url: "https://www.msit.go.kr" },
+      { label: "중소벤처기업부 AI 바우처 지원사업", url: "https://www.mss.go.kr" },
+    ],
+    headlines: [
+      { title: "AI 교육 스타트업 투자 급증…1인 강사도 수익화 성공", url: "https://n.news.naver.com" },
+      { title: "직장인 AI 역량 교육 수요 폭발…오프라인 강의도 인기", url: "https://n.news.naver.com" },
+      { title: "정부, AI 교육 바우처 2026년 예산 대폭 확대", url: "https://n.news.naver.com" },
+    ],
+  },
+  디지털노마드: {
+     category: "디지털서비스",
+    reason: "재택근무 및 원격 근무 문화 정착으로 장소에 구애받지 않는 업무 방식이 확산되고 있습니다. 프리랜서·1인 기업가가 증가하며 디지털 노마드 라이프스타일을 지원하는 서비스 수요가 높아지고 있습니다.",
+    startupItems: ["원격 근무 컨설팅", "디지털 노마드 커뮤니티 운영", "공유 오피스 큐레이션", "원격 팀 빌딩 서비스"],
+    market: "국내 프리랜서 인구는 2024년 기준 약 450만 명으로, 전체 취업자의 16%를 차지합니다. 코워킹 스페이스 시장은 연평균 12% 성장 중입니다.",
+    govLinks: [
+      { label: "중소벤처기업부 1인 기업 지원사업", url: "https://www.mss.go.kr" },
+    ],
+    headlines: [
+      { title: "디지털 노마드 인구 100만 시대…관련 서비스 창업 주목", url: "https://n.news.naver.com" },
+      { title: "원격 근무 확산에 공유 오피스 수요 급증", url: "https://n.news.naver.com" },
+      { title: "프리랜서 플랫폼 크몽·숨고, 거래액 1조 돌파", url: "https://n.news.naver.com" },
+    ],
+  },
+  제로웨이스트: {
+    category: "친환경",
+    reason: "환경에 대한 소비자 의식 향상과 ESG 트렌드가 맞물리며 제로웨이스트 제품 및 서비스 수요가 증가하고 있습니다. MZ세대를 중심으로 친환경 소비가 라이프스타일로 정착되고 있습니다.",
+    startupItems: ["제로웨이스트 편집숍", "친환경 포장재 판매", "리필 스테이션", "비건 생활용품 브랜드"],
+    market: "국내 친환경 소비재 시장은 2025년 8조원 규모 전망입니다. 제로웨이스트 전문 오프라인 매장이 전국 200개를 돌파했으며 온라인 판매도 급증 추세입니다.",
+    govLinks: [
+      { label: "환경부 녹색제품 인증 지원", url: "https://www.me.go.kr" },
+      { label: "한국환경산업기술원 친환경 창업 지원", url: "https://www.keiti.re.kr" },
+    ],
+    headlines: [
+      { title: "제로웨이스트 편집숍 전국 200개 돌파…친환경 창업 봇물", url: "https://n.news.naver.com" },
+      { title: "MZ세대 친환경 소비 확산…제로웨이스트 매출 3배 급증", url: "https://n.news.naver.com" },
+      { title: "환경부, 친환경 소상공인 지원 예산 500억 편성", url: "https://n.news.naver.com" },
+    ],
+  },
+  아이돌봄: {
+    category: "시니어/돌봄", 
+    reason: "맞벌이 가구 증가와 돌봄 공백 문제가 사회적 이슈로 떠오르면서 민간 아이돌봄 서비스 수요가 급증하고 있습니다. 정부 바우처 제도와 연계한 창업 모델이 주목받고 있습니다.",
+    startupItems: ["아이돌봄 매칭 플랫폼", "방과후 돌봄 서비스", "육아 코칭 서비스", "시간제 베이비시터 중개"],
+    market: "정부 아이돌봄 서비스 이용 가구는 연 50만 가구를 넘어섰으며, 민간 돌봄 시장 규모는 2025년 2조원 이상으로 추산됩니다. 플랫폼 기반 매칭 서비스가 빠르게 성장하고 있습니다.",
+    govLinks: [
+      { label: "여성가족부 아이돌봄 서비스 사업자 등록", url: "https://www.mogef.go.kr" },
+      { label: "보건복지부 사회서비스 바우처", url: "https://www.moe.go.kr" },
+    ],
+    headlines: [
+      { title: "맞벌이 가구 증가에 아이돌봄 플랫폼 창업 봇물", url: "https://n.news.naver.com" },
+      { title: "정부 돌봄 바우처 확대…민간 서비스 시장 커진다", url: "https://n.news.naver.com" },
+      { title: "아이돌봄 O2O 스타트업 투자 유치 잇달아", url: "https://n.news.naver.com" },
+    ],
+  },
+  팝업스토어: {
+    category: "공간/오프라인",
+    reason: "체험 마케팅 트렌드와 MZ세대의 오프라인 경험 소비 선호가 결합되며 팝업스토어가 브랜드 론칭 및 테스트의 핵심 채널로 부상했습니다. 단기 임대 플랫폼 확산으로 진입 장벽도 낮아졌습니다.",
+    startupItems: ["팝업스토어 기획·운영 대행", "단기 임대 공간 중개", "브랜드 체험 이벤트 기획", "소규모 팝업 F&B"],
+    market: "국내 팝업스토어 시장은 2024년 기준 약 1,200억원 규모로 추산되며, 성수동·홍대·강남 등 주요 상권의 단기 임대 문의가 전년 대비 2배 이상 증가했습니다.",
+    govLinks: [
+      { label: "소상공인시장진흥공단 상권 활성화 지원", url: "https://www.semas.or.kr" },
+    ],
+    headlines: [
+      { title: "팝업스토어 전성시대…성수동 단기 임대료 3배 급등", url: "https://n.news.naver.com" },
+      { title: "브랜드 론칭 채널로 팝업스토어 각광…기획사 창업 증가", url: "https://n.news.naver.com" },
+      { title: "단기 공간 임대 플랫폼 '스페이스클라우드' 거래액 급증", url: "https://n.news.naver.com" },
+    ],
+  },
+  출장세차: {
+     category: "시니어/돌봄",
+    reason: "차량 보유 인구 증가와 시간 절약 소비 트렌드가 맞물리며 방문형 세차 서비스 수요가 급성장하고 있습니다. 초기 투자 비용이 낮고 고정 점포가 필요 없어 1인 창업 모델로 주목받습니다.",
+    startupItems: ["출장 세차 서비스", "차량 관리 구독 서비스", "세차 O2O 플랫폼", "아파트 단지 전담 세차"],
+    market: "국내 자동차 관리 서비스 시장은 연 3조원 이상 규모이며, 출장 세차 앱 이용자 수가 2023년 대비 150% 증가했습니다. 구독형 출장 세차 모델의 재이용률이 80% 이상으로 높습니다.",
+    govLinks: [
+      { label: "소상공인시장진흥공단 서비스업 창업 지원", url: "https://www.semas.or.kr" },
+    ],
+    headlines: [
+      { title: "출장 세차 앱 이용자 급증…1인 창업 인기 아이템으로", url: "https://n.news.naver.com" },
+      { title: "아파트 단지 전담 세차 서비스 확산…구독 모델 주목", url: "https://n.news.naver.com" },
+      { title: "세차 O2O 스타트업 누적 거래 100만 건 돌파", url: "https://n.news.naver.com" },
+    ],
+  },
+  비건: {
+    category: "친환경",
+    reason: "채식 인구 증가와 동물복지·환경 의식 향상이 맞물리며 비건 식품 및 라이프스타일 제품 수요가 빠르게 늘고 있습니다. MZ세대를 중심으로 비건이 하나의 라이프스타일로 자리잡고 있습니다.",
+    startupItems: ["비건 카페·레스토랑", "비건 밀키트 판매", "식물성 단백질 식품 브랜드", "비건 화장품·생활용품"],
+    market: "국내 비건 식품 시장은 2025년 2,500억원 규모로 성장 전망이며, 채식 전문 식당 수가 2020년 대비 3배 이상 증가했습니다. 비건 인증 제품 수도 매년 30% 이상 늘고 있습니다.",
+    govLinks: [
+      { label: "농림축산식품부 친환경 식품 창업 지원", url: "https://www.mafra.go.kr" },
+      { label: "한국비건인증원 비건 인증 안내", url: "https://www.vegan-korea.com" },
+    ],
+    headlines: [
+      { title: "비건 식품 시장 연 30% 성장…창업 아이템으로 주목", url: "https://n.news.naver.com" },
+      { title: "국내 채식 전문 식당 3배 증가…비건 카페도 급증", url: "https://n.news.naver.com" },
+      { title: "식물성 단백질 식품 스타트업 투자 유치 잇달아", url: "https://n.news.naver.com" },
+    ],
+  },
+  업사이클링: {
+    category: "친환경",
+    reason: "자원 순환 경제에 대한 관심이 높아지며 폐자재·중고 소재를 활용한 업사이클링 제품 창업이 늘고 있습니다. ESG 경영 확산으로 기업 B2B 협업 기회도 증가하고 있습니다.",
+    startupItems: ["업사이클링 패션 브랜드", "폐기물 재활용 소품 제작", "기업 협업 업사이클링 굿즈", "업사이클링 공방 운영"],
+    market: "글로벌 업사이클링 시장은 2027년 1,500억 달러 규모 전망이며, 국내에서도 업사이클링 브랜드 수가 매년 40% 이상 증가 중입니다. 대기업과의 협업 프로젝트 건수도 늘어나는 추세입니다.",
+    govLinks: [
+      { label: "환경부 자원순환 창업 지원", url: "https://www.me.go.kr" },
+      { label: "한국환경산업기술원 녹색 창업 패키지", url: "https://www.keiti.re.kr" },
+    ],
+    headlines: [
+      { title: "업사이클링 브랜드 전년比 40% 증가…ESG 협업 봇물", url: "https://n.news.naver.com" },
+      { title: "폐현수막·청바지로 가방 만드는 스타트업 매출 급증", url: "https://n.news.naver.com" },
+      { title: "대기업, 업사이클링 스타트업과 협업 러시", url: "https://n.news.naver.com" },
+    ],
+  },
+  홈케어: {
+    category: "시니어/돌봄",
+    reason: "고령화 사회 진입과 1인 가구 증가로 가정 내 청소·수리·관리 서비스 수요가 빠르게 성장하고 있습니다. O2O 플랫폼을 통한 매칭 서비스가 보편화되며 1인 사업자 창업이 용이해졌습니다.",
+    startupItems: ["가정 청소 방문 서비스", "홈 인테리어 소품 판매", "1인 가구 생활 편의 구독", "가전 렌탈·관리 서비스"],
+    market: "국내 홈서비스 시장은 2025년 4조원 규모로 성장 전망입니다. 청소연구소·미소 등 홈케어 플랫폼 누적 이용자가 500만 명을 돌파했으며, 정기 구독 이용률이 지속 증가 중입니다.",
+    govLinks: [
+      { label: "소상공인시장진흥공단 생활서비스업 지원", url: "https://www.semas.or.kr" },
+    ],
+    headlines: [
+      { title: "홈케어 플랫폼 누적 이용자 500만 돌파…시장 급성장", url: "https://n.news.naver.com" },
+      { title: "1인 가구 증가에 가정 방문 서비스 창업 인기", url: "https://n.news.naver.com" },
+      { title: "청소연구소·미소, 기업 가치 1조 돌파 목전", url: "https://n.news.naver.com" },
+    ],
+  },
+  펫케어: {
+    category: "시니어/돌봄",
+    reason: "반려동물 보유 인구 1,500만 시대를 맞아 펫 의료·미용·호텔·용품 등 관련 시장이 전방위 성장하고 있습니다. 반려동물을 가족처럼 여기는 '펫팸족' 증가로 프리미엄 서비스 수요도 높아지고 있습니다.",
+    startupItems: ["반려동물 미용 서비스", "펫 호텔·유치원", "수제 펫푸드 브랜드", "펫 헬스케어 앱"],
+    market: "국내 펫 시장은 2026년 6조원 규모 전망이며, 반려동물 관련 창업 건수가 매년 20% 이상 증가 중입니다. 펫보험 가입률도 전년 대비 2배 증가하며 관련 서비스 시장이 확대되고 있습니다.",
+    govLinks: [
+      { label: "농림축산식품부 반려동물 연관산업 육성 지원", url: "https://www.mafra.go.kr" },
+    ],
+    headlines: [
+      { title: "펫 시장 6조원 전망…반려동물 창업 아이템 각광", url: "https://n.news.naver.com" },
+      { title: "펫케어 전용 로봇청소기 애견호텔 도입 확산", url: "https://n.news.naver.com" },
+      { title: "수제 펫푸드 스타트업 투자 유치 잇달아", url: "https://n.news.naver.com" },
+    ],
   },
 };
 
+const SEED_KEYWORDS = new Set(Object.keys(SEED_DATA));
 
-interface TrendButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  children: React.ReactNode;
+// ─────────────────────────────────────────────
+// 타입
+// ─────────────────────────────────────────────
+interface ScoreBreakdown {
+  interest:  number;
+  growth:    number;
+  evidence:  number;
+  relevance: number;
+  recency:   number;
+  total:     number;
 }
-const TrendButton = ({ children, className, ...props }: TrendButtonProps) => (
-  <button className={`${className || ""}`} {...props}>{children}</button>
-);
 
-interface TrendXIconProps { className?: string; }
-const TrendXIcon = ({ className }: TrendXIconProps) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-  </svg>
-);
+interface EvidenceArticle {
+  title:        string;
+  url:          string;
+  context:      string;
+  published_at: string;
+  source:       string;
+}
 
+interface BubbleData {
+  id:             string;
+  keyword:        string;
+  frequency:      number;
+  changeRate:     number;
+  x:              number;
+  y:              number;
+  size:           number;
+  category:       string;
+  isSeed:         boolean;
+  // 분석 데이터
+  reason:         string;
+  startupItems:   string[];
+  market:         string;
+  govLinks:       { label: string; url: string }[];
+  headlines:      { title: string; url: string }[];
+  // 동적 키워드 전용
+  marketAnalysis: string;
+  articles:       EvidenceArticle[];
+  scores:         ScoreBreakdown;
+}
+
+interface TrendRanking {
+  rank:     number;
+  keyword:  string;
+  change:   string;
+  category: string;
+  isSeed:   boolean;
+}
+
+interface LinkData {
+  source:     string;
+  target:     string;
+  similarity: number;
+}
+
+// ─────────────────────────────────────────────
+// API 응답 → BubbleData 변환
+// ─────────────────────────────────────────────
+function mapApiItem(item: any): BubbleData {
+  const kw     = item.keyword as string;
+  const isSeed = SEED_KEYWORDS.has(kw);
+  const seed   = isSeed ? SEED_DATA[kw] : null;
+
+  return {
+    id:         String(item.keyword_id),
+    keyword:    kw,
+    frequency:  item.frequency   ?? 0,
+    changeRate: item.growth_rate ?? 0,
+    x: 50, y: 50,
+    size:       Math.max(60, Math.min(140, (item.frequency ?? 0) / 20)),
+    category:   item.category_id ?? "기타",
+    isSeed,
+
+    // 고정 키워드: 하드코딩 / 동적 키워드: API 필드
+    reason:       seed?.reason       ?? item.reason       ?? "분석 데이터를 불러오는 중입니다.",
+    startupItems: seed?.startupItems ?? (Array.isArray(item.startup_item_types) ? item.startup_item_types : []),
+    market:       seed?.market       ?? "",
+    govLinks:     seed?.govLinks     ?? [],
+    headlines:    seed?.headlines    ?? [],
+
+    // 동적 키워드 전용
+    marketAnalysis: !isSeed ? (item.market_analysis ?? "") : "",
+    articles: !isSeed && Array.isArray(item.compact_evidence_articles)
+      ? item.compact_evidence_articles.map((a: any) => ({
+          title:        a.title        ?? "",
+          url:          a.url          ?? "",
+          context:      a.context      ?? "",
+          published_at: a.published_at ?? "",
+          source:       a.source       ?? "",
+        }))
+      : [],
+
+    scores: {
+      interest:  item.score_interest  ?? 0,
+      growth:    item.score_growth    ?? 0,
+      evidence:  item.score_evidence  ?? 0,
+      relevance: item.score_relevance ?? 0,
+      recency:   item.score_recency   ?? 0,
+      total:     item.ranking_score   ?? 0,
+    },
+  };
+}
+
+// ─────────────────────────────────────────────
+// 상수
+// ─────────────────────────────────────────────
+const CATEGORY_COLORS: Record<string, string> = {
+  "AI/기술창업":   "#8B5CF6",
+  "콘텐츠":        "#3B82F6",
+  "푸드/외식":     "#f5a213",
+  "교육":          "#00C9A7",
+  "디지털서비스":  "#09b3d1",
+  "친환경":        "#2bc764",
+  "시니어/돌봄":   "#EC4899",
+  "공간/오프라인": "#F97316",
+};
+const getCategoryColor = (cat: string) => CATEGORY_COLORS[cat] || "#00C9A7";
+
+const SCORE_ITEMS = [
+  { key: "interest",  label: "검색 관심도", weight: 0.30, color: "#00C9A7" },
+  { key: "growth",    label: "검색 증가율", weight: 0.20, color: "#6366F1" },
+  { key: "evidence",  label: "뉴스 근거량", weight: 0.20, color: "#F59E0B" },
+  { key: "relevance", label: "문서 관련도", weight: 0.20, color: "#3B82F6" },
+  { key: "recency",   label: "최신성",      weight: 0.10, color: "#EC4899" },
+] as const;
+
+const SECTION_META = [
+  { num: "01", title: "트렌드인 이유",    desc: "배경과 사회적 맥락", accent: "#14B8A6", light: "#dcf8f2" },
+  { num: "02", title: "추천 창업 아이템", desc: "연관 창업 유형",     accent: "#A78BFA", light: "#F5F3FF" },
+  { num: "03", title: "시장 현황",        desc: "규모 및 성장성",     accent: "#84CC16", light: "#f3fae1"},
+  { num: "04", title: "관련 정책",        desc: "정부 지원사업 공고", accent: "#3B82F6", light: "#EFF6FF" },
+  { num: "05", title: "관련 뉴스",        desc: "최신 시장 시그널",   accent: "#EC4899", light: "#FCE7F3" },
+];
+
+const fmtDate = (s: string) => {
+  if (!s) return "";
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? s : `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`;
+};
+
+// ─────────────────────────────────────────────
+// 섹션 카드 공통 래퍼
+// ─────────────────────────────────────────────
+interface SectionMeta { num: string; title: string; desc: string; accent: string; light: string; }
+function SectionCard({ meta, children }: { meta: SectionMeta; children: React.ReactNode }) {
+  return (
+    <div className="flex gap-3 p-4 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all bg-white">
+      <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black"
+        style={{ background: meta.light, color: meta.accent }}>{meta.num}</div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-sm font-bold text-gray-900">{meta.title}</span>
+          <span className="text-xs text-gray-400">{meta.desc}</span>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// 메인 컴포넌트
+// ─────────────────────────────────────────────
 export default function KeywordMap() {
-  const [top10Trends, setTop10Trends] = useState<TrendRanking[]>([]);
-  const [bubbleData, setBubbleData]   = useState<BubbleData[]>([]);
-
-  // ✂️ 여기서부터 교체 (기존 useEffect([]) 통째로 교체)
-  // 연결선 교정
-  // --------------------------------------------------------------------
-  const [networkLinks, setNetworkLinks] = useState<LinkData[]>([]);
-
-  useEffect(() => {
-    fetch('http://localhost:5000/api/trends/ranking')
-      .then(res => res.json())
-      .then(resData => {
-        // 백엔드 응답이 배열이든 {trends, links} 객체든 모두 대응 가능한 방어 코드
-        const trends = Array.isArray(resData) ? resData : (resData.trends || []);
-        const apiLinks = resData.links || [];
-
-        setTop10Trends(trends.map((item: any) => ({
-          rank:     item.ranking,  
-          keyword:  item.keyword,
-          type:     "아이템" as const,
-          change:   `+${item.growth_rate}%`,
-          category: item.category_id ?? "기타",
-        })));
-
-        setBubbleData(trends.map((item: any) => ({
-          id:         String(item.keyword_id),
-          keyword:    item.keyword,
-          type:       "아이템" as const,
-          frequency:  item.frequency,
-          changeRate: item.growth_rate,
-          similarity: 0.8,
-          x: 50, y: 50,
-          size:       Math.max(60, Math.min(140, item.frequency / 20)),
-          category:   item.category_id ?? "기타",
-        })));
-
-        // 실제 백엔드에서 전송한 유사도 관계망 데이터를 상태에 주입
-        setNetworkLinks(apiLinks.map((link: any) => ({
-          source:     String(link.source_id),
-          target:     String(link.target_id),
-          similarity: Number(link.similarity)
-        })));
-      })
-      .catch(err => console.error('API 호출 실패:', err));
-  }, []);
-  // 🛠️ 여기까지 교체
-  // --------------------------------------------------------------------
-
-  const [viewMode,      setViewMode]      = useState<"ranking" | "bubbles">("ranking");
+  const [top10Trends,    setTop10Trends]    = useState<TrendRanking[]>([]);
+  const [bubbleData,     setBubbleData]     = useState<BubbleData[]>([]);
+  const [networkLinks,   setNetworkLinks]   = useState<LinkData[]>([]);
+  const [viewMode,       setViewMode]       = useState<"ranking" | "bubbles">("ranking");
   const [selectedBubble, setSelectedBubble] = useState<string | null>(null);
-  const [filterType,    setFilterType]    = useState<"전체" | "아이템" | "소비">("전체");
   const svgRef = useRef<SVGSVGElement>(null);
 
-  const getCategoryColor = (category: string) => {
-    const colors: Record<string, string> = {
-      "IT/소프트웨어":   "#8B5CF6",
-      "제조/생산":       "#3B82F6",
-      "유통/서비스":     "#F59E0B",
-      "바이오/헬스케어": "#10B981",
-      "친환경/에너지":   "#22C55E",
-    };
-    return colors[category] || "#00C9A7";
-  };
+  useEffect(() => {
+  // ── SEED 14개 임시 주입 (DB 연결 전) ──
+    const seedList = Object.keys(SEED_DATA);
+    const mockTrends = seedList.map((kw, i) => ({
+      keyword_id:     `seed_${String(i + 1).padStart(2, "0")}`,
+      keyword:        kw,
+      frequency:      1400 - i * 70,
+      growth_rate:    120 - i * 5,
+      ranking:        i + 1,
+      category_id: SEED_DATA[kw]?.category ?? "기타",
+      ranking_score:  0,
+      score_interest:  0,
+      score_growth:    0,
+      score_evidence:  0,
+      score_relevance: 0,
+      score_recency:   0,
+    }));
 
-  const filteredBubbles    = filterType === "전체" ? bubbleData : bubbleData.filter(b => b.type === filterType);
-  const handleBubbleClick  = (id: string) => setSelectedBubble(prev => prev === id ? null : id);
-  const selectedBubbleData = bubbleData.find(b => b.id === selectedBubble);
-  const analysis           = selectedBubbleData ? analysisData[selectedBubbleData.keyword] : null;
+    setBubbleData(mockTrends.map(mapApiItem));
+    setTop10Trends(
+      mockTrends.slice(0, 10).map(item => ({
+        rank:     item.ranking,
+        keyword:  item.keyword,
+        change:   `+${item.growth_rate}%`,
+        category: item.category_id,
+        isSeed:   true,
+      }))
+    );
+    setNetworkLinks([]);
+  }, []);
 
+  const selectedData = bubbleData.find(b => b.id === selectedBubble) ?? null;
+
+  // ── D3 ──────────────────────────────────────
   useEffect(() => {
     if (viewMode !== "bubbles" || !svgRef.current) return;
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
-    const container = svgRef.current.parentElement;
-    const width  = container ? container.clientWidth  : 800;
-    const height = container ? container.clientHeight : 600;
+
+    const container = svgRef.current.parentElement!;
+    const width  = container.clientWidth  || 800;
+    const height = container.clientHeight || 600;
     svg.attr("viewBox", `0 0 ${width} ${height}`);
 
-    const nodes = filteredBubbles.map(d => ({ ...d, x: width / 2 + Math.random() * 10, y: height / 2 + Math.random() * 10 }));
-    // const links = linkData.map(d => ({ ...d })); //에러원인 삭제 RHY
+    const nodes = bubbleData.map(d => ({
+      ...d,
+      x: width  / 2 + Math.random() * 10,
+      y: height / 2 + Math.random() * 10,
+    }));
 
-    // ✂️ 여기서부터 교체 
-    // 버블맵 연결선 교정
-    // --------------------------------------------------------------------
     const nodeIds = new Set(nodes.map(n => n.id));
-
-    // 하드코딩 linkData 대신, 실시간 상태값인 networkLinks를 필터링합니다.
-    const links = networkLinks
+    const links   = networkLinks
       .filter(l => nodeIds.has(l.source) && nodeIds.has(l.target))
       .map(d => ({ ...d }));
-    
-      // 각 링크 오프젝트가 가지고 있는 고유 similarity 수치를 기반으로 정적 거리를 계산합니다.
-    const getDistance = (linkObj: any) => {
-      const similarity = linkObj.similarity !== undefined ? linkObj.similarity : 0.5;
-      // 유사도가 1.0(최고)이면 거리 40px로 바짝 붙고, 0.0(최저)이면 240px로 멀어집니다.
-      return (1 - similarity) * 200 + 40; 
-    };
-
-    // 탄성을 끄고 계산된 고정 거리를 엄격하게 준수하는 시뮬레이션 구성
 
     const simulation = d3.forceSimulation(nodes as d3.SimulationNodeDatum[])
-      .force("link", d3.forceLink(links)
-        .id((d: any) => d.id)
-        .distance(d => getDistance(d)) 
-        .strength(1) // 👈 탄성(고무줄 효과) 없이 지지대처럼 칼같이 고정하는 힘
-      )
-      .force("charge",  d3.forceManyBody().strength(-20)) // 👈 사방 척력을 대폭 줄여 거리 왜곡 방지
+      .force("link",    d3.forceLink(links).id((d: any) => d.id)
+        .distance((l: any) => (1 - (l.similarity ?? 0.5)) * 200 + 40).strength(1))
+      .force("charge",  d3.forceManyBody().strength(-20))
       .force("center",  d3.forceCenter(width / 2, height / 2))
       .force("collide", d3.forceCollide().radius((d: any) => d.size * 0.7 + 2).strength(0.1));
-    // 🛠️ 여기까지 교체
-    // --------------------------------------------------------------------
 
     const drag = (sim: any) => {
-      function dragstarted(e: any, d: any) { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }
-      function dragged(e: any, d: any)     { d.fx = e.x; d.fy = e.y; }
-      function dragended(e: any, d: any)   { if (!e.active) sim.alphaTarget(0); d.fx = null; d.fy = null; }
-      return d3.drag().on("start", dragstarted).on("drag", dragged).on("end", dragended);
+      const ds = (e: any, d: any) => { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; };
+      const dm = (e: any, d: any) => { d.fx = e.x; d.fy = e.y; };
+      const de = (e: any, d: any) => { if (!e.active) sim.alphaTarget(0); d.fx = null; d.fy = null; };
+      return d3.drag().on("start", ds).on("drag", dm).on("end", de);
     };
 
-    const link = svg.append("g").selectAll("line").data(links).join("line")
+    svg.append("g").selectAll("line").data(links).join("line")
       .attr("stroke", "#e2e8f0").attr("stroke-opacity", 0.8).attr("stroke-width", 1.5);
 
-    const nodeGroup = svg.append("g").selectAll("g").data(nodes).join("g")
+    // ── 호버 툴팁 ──
+    const tooltip = svg.append("foreignObject")
+      .attr("width", 230).attr("height", 210)
+      .attr("visibility", "hidden")
+      .attr("pointer-events", "none");
+
+    const tooltipDiv = tooltip.append("xhtml:div")
+      .style("background", "white")
+      .style("border", "1px solid #e2e8f0")
+      .style("border-radius", "10px")
+      .style("padding", "10px 12px")
+      .style("font-family", "sans-serif")
+      .style("box-shadow", "0 4px 16px rgba(0,0,0,0.12)")
+      .style("pointer-events", "none");
+
+    const nodeGroup = svg.append("g")
+      .selectAll<SVGGElement, typeof nodes[0]>("g")
+      .data(nodes).join("g")
       .style("cursor", "pointer")
       .style("opacity", d => selectedBubble && selectedBubble !== (d as any).id ? 0.25 : 1)
-      .on("click", (_, d: any) => handleBubbleClick(d.id))
+      .on("click", (_, d: any) => setSelectedBubble(prev => prev === d.id ? null : d.id))
+      .on("mouseenter", (_, d: any) => {
+        let tx = d.x + d.size * 0.7 + 10;
+        let ty = d.y - 105;
+        if (tx + 234 > width)  tx = d.x - d.size * 0.7 - 240;
+        if (ty < 0)            ty = 4;
+        if (ty + 210 > height) ty = height - 214;
+        tooltip.attr("x", tx).attr("y", ty).attr("visibility", "visible");
+
+        const totalPct = Math.min(Math.round(d.scores.total * 100), 100);
+        let html = `
+          <div style="margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <span style="font-size:12px;font-weight:700;color:#111;">${d.keyword}</span>
+              <span style="font-size:11px;font-weight:700;color:#00C9A7;">종합 ${d.scores.total.toFixed(2)}</span>
+            </div>
+            <div style="height:5px;background:#e5e7eb;border-radius:3px;overflow:hidden;">
+              <div style="height:100%;width:${totalPct}%;background:#00C9A7;border-radius:3px;"></div>
+            </div>
+            <div style="height:1px;background:#f0f0f0;margin:8px 0;"></div>
+          </div>`;
+
+        SCORE_ITEMS.forEach(s => {
+          const raw = (d.scores as any)[s.key] as number;
+          const pct = Math.min(Math.round(raw * 100), 100);
+          const wtd = (raw * s.weight).toFixed(3);
+          html += `
+            <div style="margin-bottom:6px;">
+              <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px;">
+                <span style="color:#555;">${s.label} <span style="color:#bbb;">×${s.weight}</span></span>
+                <span style="font-weight:700;color:${s.color};">${wtd}</span>
+              </div>
+              <div style="height:3px;background:#f0f0f0;border-radius:2px;overflow:hidden;">
+                <div style="height:100%;width:${pct}%;background:${s.color};border-radius:2px;"></div>
+              </div>
+            </div>`;
+        });
+
+        (tooltipDiv.node() as HTMLDivElement).innerHTML = html;
+      })
+      .on("mouseleave", () => tooltip.attr("visibility", "hidden"))
       .call(drag(simulation) as any);
 
     nodeGroup.append("circle")
@@ -232,236 +547,268 @@ export default function KeywordMap() {
       .style("pointer-events", "none");
 
     nodeGroup.append("text")
-      .text((d: any) => `${d.changeRate > 0 ? '+' : ''}${d.changeRate}%`)
+      .text((d: any) => `${d.changeRate > 0 ? "+" : ""}${d.changeRate}%`)
       .attr("y", 17).attr("text-anchor", "middle")
       .style("fill", "rgba(255,255,255,0.85)").style("font-size", "10px")
       .style("pointer-events", "none");
 
+    const linkSel = svg.selectAll<SVGLineElement, LinkData>("line");
     simulation.on("tick", () => {
-      link.attr("x1", (d: any) => d.source.x).attr("y1", (d: any) => d.source.y)
-          .attr("x2", (d: any) => d.target.x).attr("y2", (d: any) => d.target.y);
+      linkSel
+        .attr("x1", (d: any) => d.source.x).attr("y1", (d: any) => d.source.y)
+        .attr("x2", (d: any) => d.target.x).attr("y2", (d: any) => d.target.y);
       nodeGroup.attr("transform", (d: any) => `translate(${d.x},${d.y})`);
     });
 
     return () => { simulation.stop(); };
-  }, [viewMode, filteredBubbles, selectedBubble, networkLinks]);
+  }, [viewMode, bubbleData, selectedBubble, networkLinks]);
 
+  // ─────────────────────────────────────────────
+  // 렌더
+  // ─────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#F5FFFE] py-8 px-6">
       <div className="max-w-8xl mx-auto">
 
-        {/* 헤더 */}
         <div className="mb-6">
-          <div className="flex items-center gap-2 mb-1">
-            
-            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">창업 트렌드 버블맵</h1>
-          </div>
-          <p >실시간 뉴스 기반 키워드 트렌드를 분석해 보세요.</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">창업 트렌드 버블맵</h1>
+          <p className="text-sm text-gray-500 mt-1">실시간 뉴스 기반 키워드 트렌드를 분석해 보세요.</p>
         </div>
 
         <div className="flex gap-6">
 
-          {/* ── 좌측: TOP 10 랭킹 ── */}
+          {/* ── TOP 10 랭킹 ── */}
           <div className={`transition-all duration-300 ${viewMode === "ranking" ? "w-1/2 mx-auto" : "w-72 flex-shrink-0"}`}>
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-
-              {/* 카드 헤더 */}
               <div className="px-6 py-5 border-b border-gray-50">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Trending Now</p>
-                    <h2 className="text-lg font-bold text-gray-900">급상승 TOP 10</h2>
-                  </div>
-
-                </div>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Trending Now</p>
+                <h2 className="text-lg font-bold text-gray-900">급상승 TOP 10</h2>
               </div>
 
-              {/* 랭킹 목록 */}
               <div className="divide-y divide-gray-50">
-                  {top10Trends.map((item, idx) => {
-                    const isTop3 = item.rank <= 3;
-                    const dotColors = ["#FFD700", "#C0C0C0", "#CD7F32"];
-                    const barWidths = ["90%", "75%", "65%"];
-                    const barColors = ["#00C9A7", "#00B394", "#009E82"];
-                    const catShort = item.category?.split('/')[0] ?? item.category;
-
-                    return (
-                      <div
-                        key={item.rank}
-                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer"
-                      >
-                        {/* 도트 */}
-                        <div
-                          className="flex-shrink-0 w-2.5 h-2.5 rounded-full"
-                          style={{ background: isTop3 ? dotColors[item.rank - 1] : '#E5E7EB' }}
-                        />
-
-                        {/* 순위 */}
-                        <div className="flex-shrink-0 w-5 text-center">
-                          {isTop3 ? (
-                            <span className="text-base font-black" style={{ color: barColors[item.rank - 1] }}>
-                              {item.rank}
-                            </span>
-                          ) : (
-                            <span className="text-sm font-semibold text-gray-400">{item.rank}</span>
-                          )}
-                        </div>
-
-                        {/* 키워드 + 바 */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className={`font-semibold text-sm truncate ${isTop3 ? 'text-gray-900' : 'text-gray-600'}`}>
-                              {item.keyword}
-                            </span>
-                          </div>
-                          {isTop3 && (
-                            <div className="flex items-center gap-2 mt-1">
-                              <div style={{ height: '3px', width: '70px', background: '#e5e7eb', borderRadius: '2px', overflow: 'hidden' }}>
-                                <div style={{ height: '100%', width: barWidths[item.rank - 1], background: barColors[item.rank - 1], borderRadius: '2px' }} />
-                              </div>
-                              <span style={{ fontSize: '10px', color: barColors[item.rank - 1], fontWeight: 600 }}>
-                                {catShort}
-                              </span>
-                            </div>
-                          )}
-                          {!isTop3 && (
-                            <div className="text-xs text-gray-400">{item.category}</div>
-                          )}
-                        </div>
-
-                        {/* 상승률 */}
-                        <div className="flex items-center gap-0.5 flex-shrink-0">
-                          <TrendingUp className="w-3 h-3 text-red-400" />
-                          <span className={`font-bold text-red-400 ${isTop3 ? 'text-sm' : 'text-xs'}`}>
-                            {item.change}
+                {top10Trends.map(item => {
+                  const isTop3    = item.rank <= 3;
+                  const dotColors = ["#FFD700", "#C0C0C0", "#CD7F32"];
+                  const barWidths = ["90%", "75%", "65%"];
+                  const barColors = ["#00C9A7", "#00B394", "#009E82"];
+                  const catShort  = item.category?.split("/")[0] ?? item.category;
+                  return (
+                    <div key={item.rank} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 transition-colors cursor-pointer">
+                      <div className="flex-shrink-0 w-2.5 h-2.5 rounded-full"
+                        style={{ background: isTop3 ? dotColors[item.rank - 1] : "#E5E7EB" }} />
+                      <div className="flex-shrink-0 w-5 text-center">
+                        {isTop3
+                          ? <span className="text-base font-black" style={{ color: barColors[item.rank - 1] }}>{item.rank}</span>
+                          : <span className="text-sm font-semibold text-gray-400">{item.rank}</span>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`font-semibold text-sm truncate ${isTop3 ? "text-gray-900" : "text-gray-600"}`}>
+                            {item.keyword}
                           </span>
                         </div>
+                        {isTop3 ? (
+                          <div className="flex items-center gap-2 mt-1">
+                            <div style={{ height: "3px", width: "70px", background: "#e5e7eb", borderRadius: "2px", overflow: "hidden" }}>
+                              <div style={{ height: "100%", width: barWidths[item.rank - 1], background: barColors[item.rank - 1], borderRadius: "2px" }} />
+                            </div>
+                            <span style={{ fontSize: "10px", color: barColors[item.rank - 1], fontWeight: 600 }}>{catShort}</span>
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-400">{item.category}</div>
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
+                      <div className="flex items-center gap-0.5 flex-shrink-0">
+                        <TrendingUp className="w-3 h-3 text-red-400" />
+                        <span className={`font-bold text-red-400 ${isTop3 ? "text-sm" : "text-xs"}`}>{item.change}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
 
-              {/* 버블맵 보기 버튼 */}
               {viewMode === "ranking" && (
                 <div className="flex justify-center px-6 py-5 border-t border-gray-50">
-                  <TrendButton
-                    onClick={() => setViewMode("bubbles")}
-                    className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                    style={{ background: '#00C9A7' }}
-                  >
+                  <button onClick={() => setViewMode("bubbles")}
+                    className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                    style={{ background: "#00C9A7" }}>
                     <Zap className="w-4 h-4" />
                     버블맵으로 보기
                     <ChevronRight className="w-4 h-4" />
-                  </TrendButton>
+                  </button>
                 </div>
               )}
             </div>
           </div>
 
-          {/* ── 우측: 버블맵 ── */}
+          {/* ── 버블맵 ── */}
           {viewMode === "bubbles" && (
             <div className="flex-1">
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
 
-                {/* 필터 */}
                 <div className="flex items-center justify-between mb-5">
-                  <div className="flex gap-2"></div>
-
-                  <TrendButton
-                    onClick={() => setViewMode("ranking")}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white transition-opacity hover:opacity-90 shadow-sm"
-                    style={{ background: '#00C9A7' }}
-                  >
-                    <ArrowLeft className="w-4 h-4" /> 
-                    <span>랭킹보기</span>
-                  </TrendButton>
+                  <p className="text-xs text-gray-400">버블에 마우스를 올리면 트렌드 점수, 클릭하면 상세 분석을 확인할 수 있어요.</p>
+                  <button onClick={() => setViewMode("ranking")}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white hover:opacity-90 shadow-sm"
+                    style={{ background: "#00C9A7" }}>
+                    <ArrowLeft className="w-4 h-4" />
+                    랭킹보기
+                  </button>
                 </div>
 
-                {/* D3 영역 */}
-                <div
-                  className="relative rounded-xl border border-gray-100 overflow-hidden transition-all duration-300"
+                <div className="relative rounded-xl border border-gray-100 overflow-hidden"
                   style={{
-                    background: 'linear-gradient(135deg, #F8FFFE 0%, #F0F9FF 100%)',
-                    height: selectedBubble ? '260px' : '580px',
-                  }}
-                >
+                    background: "linear-gradient(135deg, #F8FFFE 0%, #F0F9FF 100%)",
+                    height: selectedBubble ? "260px" : "580px",
+                  }}>
                   <svg ref={svgRef} className="w-full h-full" />
                   <div className="absolute bottom-3 left-3 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-sm pointer-events-none">
-                    {/* 변경: 기존 아이템/소비 안내를 제거하고, 실제 getCategoryColor 스케일에 맞춘 '분야별 범례' 구성 */}
-                    <p className="text-xs text-gray-500 mb-2 font-bold tracking-tight">🎨 분야별 범례 (색상 기준)</p>
+                    <p className="text-xs text-gray-500 mb-2 font-bold">분야별 색상</p>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs font-medium text-gray-600">
-                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ background: "#8B5CF6" }} />IT/소프트웨어</span>
-                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ background: "#3B82F6" }} />제조/생산</span>
-                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ background: "#F59E0B" }} />유통/서비스</span>
-                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ background: "#10B981" }} />바이오/헬스케어</span>
-                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ background: "#22C55E" }} />친환경/에너지</span>
-                      <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full inline-block shrink-0" style={{ background: "#00C9A7" }} />기타 기본</span>
+                      {Object.entries(CATEGORY_COLORS).map(([cat, color]) => (
+                        <span key={cat} className="flex items-center gap-1.5">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: color }} />
+                          {cat}
+                        </span>
+                      ))}
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: "#00C9A7" }} />기타
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                {/* 상세 분석 */}
-                {selectedBubble && analysis && (
+                {/* ── 분석 패널 ── */}
+                {selectedBubble && selectedData && (
                   <div className="mt-6">
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-0.5">Trend Analysis</p>
-                        <h3 className="text-lg font-bold text-gray-900">{selectedBubbleData?.keyword}</h3>
+                        <h3 className="text-lg font-bold text-gray-900">{selectedData.keyword}</h3>
                       </div>
-                      <TrendButton onClick={() => setSelectedBubble(null)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
-                        <TrendXIcon className="w-4 h-4" />
-                      </TrendButton>
+                      <button onClick={() => setSelectedBubble(null)}
+                        className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
                     </div>
 
                     <div className="flex flex-col gap-2.5">
-                      {[
-                        { num: "01", title: "왜 트렌드인가",    desc: "배경과 사회적 맥락", content: analysis.trend,  accent: "#00C9A7", light: "#E0F7F3" },
-                        { num: "02", title: "관련 정책 및 공고", desc: "정부 지원사업",       content: analysis.policy, accent: "#6366F1", light: "#EEF2FF" },
-                        { num: "03", title: "시장현황",           desc: "규모 및 성장성",      content: analysis.market, accent: "#F59E0B", light: "#FEF3C7" },
-                        { num: "04", title: "뉴스인사이트",       desc: "최신 시장 시그널",    content: analysis.news,   accent: "#3B82F6", light: "#EFF6FF" },
-                      ].map((item) => (
-                        <div key={item.num} className="flex gap-3 p-4 rounded-xl border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all bg-white">
-                          <div
-                            className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black"
-                            style={{ background: item.light, color: item.accent }}
-                          >
-                            {item.num}
+
+                      {/* 01 트렌드인 이유 */}
+                      <SectionCard meta={SECTION_META[0]}>
+                        <p className="text-sm text-gray-600 leading-relaxed">{selectedData.reason}</p>
+                      </SectionCard>
+
+                      {/* 02 추천 창업 아이템 */}
+                      <SectionCard meta={SECTION_META[1]}>
+                        {selectedData.startupItems.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {selectedData.startupItems.map((item, i) => (
+                              <span key={i} className="px-3 py-1 rounded-full text-xs font-semibold"
+                                style={{ background: SECTION_META[1].light, color: SECTION_META[1].accent }}>
+                                {item}
+                              </span>
+                            ))}
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm font-bold text-gray-900">{item.title}</span>
-                              <span className="text-xs text-gray-400">{item.desc}</span>
+                        ) : (
+                          <p className="text-sm text-gray-400">데이터 없음</p>
+                        )}
+                      </SectionCard>
+
+                      {/* 03 시장 현황 */}
+                      <SectionCard meta={SECTION_META[2]}>
+                        {(() => {
+                          const text = selectedData.isSeed
+                            ? selectedData.market
+                            : (selectedData.marketAnalysis || "");
+                          return text
+                            ? <p className="text-sm text-gray-600 leading-relaxed">{text}</p>
+                            : <p className="text-sm text-gray-400 italic">시장 현황 분석을 불러오는 중...</p>;
+                        })()}
+                      </SectionCard>
+
+                      {/* 04 관련 정책 */}
+                      <SectionCard meta={SECTION_META[3]}>
+                        {selectedData.govLinks.length > 0 ? (
+                          <div className="flex flex-col gap-2">
+                            {selectedData.govLinks.map((g, i) => (
+                              <a key={i} href={g.url} target="_blank" rel="noopener noreferrer"
+                                className="flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2 hover:opacity-80 transition-opacity"
+                                style={{ background: SECTION_META[3].light, color: SECTION_META[3].accent }}>
+                                <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                                {g.label}
+                              </a>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-400">연결된 정책 공고 없음</p>
+                        )}
+                      </SectionCard>
+
+                      {/* 05 관련 뉴스 */}
+                      <SectionCard meta={SECTION_META[4]}>
+                        {selectedData.isSeed ? (
+                          /* 고정 키워드: 헤드라인 3개 */
+                          selectedData.headlines.length > 0 ? (
+                            <div className="flex flex-col gap-2">
+                              {selectedData.headlines.map((h, i) => (
+                                <a key={i} href={h.url} target="_blank" rel="noopener noreferrer"
+                                  className="flex items-start gap-2 group rounded-lg px-3 py-2.5 hover:opacity-80 transition-opacity"
+                                  style={{ background: SECTION_META[4].light }}>
+                                  <Newspaper className="w-3.5 h-3.5 mt-0.5 flex-shrink-0"
+                                    style={{ color: SECTION_META[4].accent }} />
+                                  <span className="text-xs font-medium leading-snug text-gray-700 group-hover:underline">
+                                    {h.title}
+                                  </span>
+                                  <ExternalLink className="w-3 h-3 ml-auto flex-shrink-0 opacity-40 group-hover:opacity-80"
+                                    style={{ color: SECTION_META[4].accent }} />
+                                </a>
+                              ))}
                             </div>
-                            <p className="text-sm text-gray-600 leading-relaxed">{item.content}</p>
-                          </div>
-                        </div>
-                      ))}
+                          ) : (
+                            <p className="text-sm text-gray-400">관련 뉴스 없음</p>
+                          )
+                        ) : (
+                          /* 동적 키워드: evidence_articles 헤드라인 최대 3개 */
+                          selectedData.articles.length > 0 ? (
+                            <div className="flex flex-col gap-2">
+                              {selectedData.articles.slice(0, 3).map((art, i) => (
+                                <a key={i} href={art.url} target="_blank" rel="noopener noreferrer"
+                                  className="flex items-start gap-2 group rounded-lg px-3 py-2.5 hover:opacity-80 transition-opacity"
+                                  style={{ background: SECTION_META[4].light }}>
+                                  <Newspaper className="w-3.5 h-3.5 mt-0.5 flex-shrink-0"
+                                    style={{ color: SECTION_META[4].accent }} />
+                                  <div className="flex-1 min-w-0">
+                                    <span className="text-xs font-medium leading-snug text-gray-700 group-hover:underline block">
+                                      {art.title}
+                                    </span>
+                                    {art.published_at && (
+                                      <span className="text-xs text-gray-400 mt-0.5 block">
+                                        {art.source && `${art.source} · `}{fmtDate(art.published_at)}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <ExternalLink className="w-3 h-3 ml-1 flex-shrink-0 opacity-40 group-hover:opacity-80"
+                                    style={{ color: SECTION_META[4].accent }} />
+                                </a>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-400">관련 뉴스 없음</p>
+                          )
+                        )}
+                      </SectionCard>
 
-                      <a
-                        href={analysis.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-3 p-4 rounded-xl border-2 hover:shadow-sm transition-all"
-                        style={{ borderColor: '#00C9A7', background: '#F0FDFB' }}
-                      >
-                        <div className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold text-white" style={{ background: '#00C9A7' }}>
-                          →
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-gray-900 mb-0.5">원문 보기</p>
-                          <p className="text-xs truncate" style={{ color: '#00C9A7' }}>{analysis.url}</p>
-                        </div>
-                      </a>
-                    </div> 
-                  </div>   
+                    </div>
+                  </div>
                 )}
-
               </div>
-            </div>  
+            </div>
           )}
-
-        </div> 
-      </div>   
-    </div>    
+        </div>
+      </div>
+    </div>
   );
 }

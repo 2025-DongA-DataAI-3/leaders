@@ -1,4 +1,4 @@
-// KeywordMap.tsx — 최종본
+
 
 import { useState, useEffect, useRef } from "react";
 import { TrendingUp, ChevronRight, ArrowLeft, Zap, ExternalLink, Newspaper } from "lucide-react";
@@ -157,7 +157,9 @@ export default function KeywordMap() {
   const svgRef = useRef<SVGSVGElement>(null);
   const [zoomLevel, setZoomLevel] = useState(100);
   const navigate = useNavigate();
-  
+  const [marketCache, setMarketCache] = useState<Record<string, string>>({});
+  const [marketLoading, setMarketLoading] = useState(false);
+
   useEffect(() => {
     fetch("http://localhost:8000/api/keyword-map")
       .then(res => res.json())
@@ -307,6 +309,20 @@ export default function KeywordMap() {
           });
           return next;
         });
+      
+       if (d.id) {
+          setMarketCache(cache => {
+            if (cache[d.id]) return cache; // 이미 있으면 호출 안 함
+            setMarketLoading(true);
+            fetch(`http://localhost:8000/api/keyword-map/market-analysis/${encodeURIComponent(d.id)}?reason=${encodeURIComponent(d.reason ?? "")}`)
+              .then(res => res.json())
+              .then(data => {
+                setMarketCache(prev => ({ ...prev, [d.id]: data.market_analysis }));
+              })
+              .finally(() => setMarketLoading(false));
+            return cache;
+          });
+        }
       })
       .on("mouseenter", (event, d: any) => {
         const totalPct = Math.min(Math.round(d.scores.total * 100), 100);
@@ -547,10 +563,15 @@ export default function KeywordMap() {
                       </SectionCard>
                       <SectionCard meta={SECTION_META[2]}>
                         {(() => {
-                          const text = selectedData.isSeed ? selectedData.market : (selectedData.marketAnalysis || "");
-                          return text
-                            ? <p className="text-sm text-gray-600 leading-relaxed">{text}</p>
-                            : <p className="text-sm text-gray-400 italic">시장 현황 분석을 불러오는 중...</p>;
+                          const text = marketCache[selectedData.id] || selectedData.marketAnalysis || "";
+                          if (text) return <p className="text-sm text-gray-600 leading-relaxed">{text}</p>;
+                          if (marketLoading) return (
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 rounded-full border-2 border-[#84CC16] border-t-transparent animate-spin" />
+                              <p className="text-sm text-gray-400">시장 현황 분석 중...</p>
+                            </div>
+                          );
+                          return <p className="text-sm text-gray-400 italic">데이터 없음</p>;
                         })()}
                       </SectionCard>
                       <SectionCard meta={SECTION_META[3]}>

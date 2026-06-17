@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef} from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { ArrowLeft, Bold, Italic, Link as LinkIcon, Image } from 'lucide-react';
 
@@ -74,6 +74,12 @@ export default function CommunityWrite() {
 
   const userId = localStorage.getItem('user_id');
 
+
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [isBold, setIsBold] = useState(false);
+  const [isItalic, setIsItalic] = useState(false);
+
+
   // ── 카테고리 목록 불러오기 ──
   useEffect(() => {
     fetch(`${API_BASE}/api/community/categories`)
@@ -106,6 +112,9 @@ export default function CommunityWrite() {
 
         setTitle(data.title);
         setContent(data.content);
+        setTimeout(() => {
+          if (editorRef.current) editorRef.current.innerHTML = data.content;
+          }, 0);
         if (data.majorcategory) setSelectedMajor(data.majorcategory);
         if (data.post_keyword_id) setSelectedKeywordId(data.post_keyword_id);
 
@@ -147,10 +156,12 @@ export default function CommunityWrite() {
       alert('제목을 입력해주세요.');
       return;
     }
-    if (!content.trim()) {
-      alert('본문을 입력해주세요.');
-      return;
-    }
+    const rawText = editorRef.current?.innerText?.trim() ?? '';
+      if (!rawText) {
+        alert('본문을 입력해주세요.');
+        setSubmitting(false);
+        return;
+      }
 
     setSubmitting(true);
 
@@ -163,7 +174,7 @@ export default function CommunityWrite() {
           body: JSON.stringify({
             user_id: userId,
             title: title.trim(),
-            content: content.trim(),
+            content: editorRef.current?.innerHTML?.trim() ?? '',
             post_keyword_id: selectedKeywordId,
           }),
         });
@@ -185,7 +196,7 @@ export default function CommunityWrite() {
           body: JSON.stringify({
             user_id: userId,
             title: title.trim(),
-            content: content.trim(),
+            content: editorRef.current?.innerHTML?.trim() ?? '',
             post_keyword_id: selectedKeywordId,
           }),
         });
@@ -314,33 +325,75 @@ export default function CommunityWrite() {
               본문 <span className="text-red-500">*</span>
             </label>
 
-            {/* 텍스트 서식 툴바 (시각적 요소만, 기능 미구현) */}
+            {/* 툴바 */}
             <div className="flex items-center gap-1 p-2 bg-gray-50 border border-gray-200 rounded-t-xl">
-              <CommButton type="button" className="p-2 rounded-lg hover:bg-gray-200 transition-colors text-gray-600" title="굵게">
+              <CommButton type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  document.execCommand('bold');
+                  setIsBold(document.queryCommandState('bold'));  
+                }}
+                className={`p-2 rounded-lg transition-colors font-bold ${
+                  isBold ? 'bg-[#00C9A7] text-white' : 'hover:bg-gray-200 text-gray-600'
+                }`} title="굵게">
                 <Bold className="w-4 h-4" />
               </CommButton>
-              <CommButton type="button" className="p-2 rounded-lg hover:bg-gray-200 transition-colors text-gray-600" title="기울임">
+
+              <CommButton type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  document.execCommand('italic');
+                  setIsItalic(document.queryCommandState('italic'));  
+                }}
+                className={`p-2 rounded-lg transition-colors italic ${
+                  isItalic ? 'bg-[#00C9A7] text-white' : 'hover:bg-gray-200 text-gray-600'
+                }`} title="기울임">
                 <Italic className="w-4 h-4" />
               </CommButton>
+
               <div className="w-px h-6 bg-gray-300 mx-1"></div>
-              <CommButton type="button" className="p-2 rounded-lg hover:bg-gray-200 transition-colors text-gray-600" title="링크 삽입">
+              <CommButton type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  const url = prompt('링크 URL을 입력하세요:', 'https://');
+                  if (url) document.execCommand('createLink', false, url);
+                }}
+                className="p-2 rounded-lg hover:bg-gray-200 transition-colors text-gray-600" title="링크 삽입">
                 <LinkIcon className="w-4 h-4" />
               </CommButton>
-              <CommButton type="button" className="p-2 rounded-lg hover:bg-gray-200 transition-colors text-gray-600" title="이미지 첨부">
+              <CommButton type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  const url = prompt('이미지 URL을 입력하세요:', 'https://');
+                  if (url) document.execCommand('insertImage', false, url);
+                }}
+                className="p-2 rounded-lg hover:bg-gray-200 transition-colors text-gray-600" title="이미지 삽입">
                 <Image className="w-4 h-4" />
               </CommButton>
             </div>
 
-            <CommTextArea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="창업자들과 공유하고 싶은 경험이나 이야기를 자유롭게 적어보세요."
-              className="w-full px-4 py-4 border border-gray-200 border-t-0 rounded-b-xl focus:outline-none focus:ring-2 focus:ring-[#00C9A7] focus:border-transparent transition-all text-base resize-none"
-              rows={12}
-              maxLength={5000}
-            />
+            {/* 에디터 영역 — relative 추가 */}
+            <div className="relative">
+              <div
+                ref={editorRef}
+                contentEditable
+                suppressContentEditableWarning
+                onInput={(e) => setContent(e.currentTarget.innerHTML)}
+                className="w-full px-4 py-4 border border-gray-200 border-t-0 rounded-b-xl focus:outline-none focus:ring-2 focus:ring-[#00C9A7] text-base min-h-[300px]"
+                style={{ lineHeight: '1.7' }}
+              />
+              {!content && (
+                <div
+                  className="absolute px-4 text-gray-400 text-base pointer-events-none"
+                  style={{ top: '16px', left: 0 }}
+                >
+                  창업자들과 공유하고 싶은 경험이나 이야기를 자유롭게 적어보세요.
+                </div>
+              )}
+            </div>
+
             <div className="mt-1 text-xs text-gray-400 text-right">
-              {content.length}/5000
+              {content.replace(/<[^>]*>/g, '').length}/5000
             </div>
           </div>
 

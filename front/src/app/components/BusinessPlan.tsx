@@ -3,6 +3,7 @@ import { FileDown, Save, Sparkles, Check, X, Paperclip, Loader2, FileText, PenLi
 import { useSearchParams } from 'react-router';
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
+import { useLocation } from "react-router-dom";
 
 const A4_W = 794;
 const A4_H = 1122;
@@ -140,10 +141,35 @@ function AutoResizeTextarea({
     />
   );
 }
+function Tooltip({ text, children }: { text: string; children: React.ReactNode }) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <div className="relative inline-flex"
+      onMouseEnter={() => setVisible(true)}
+      onMouseLeave={() => setVisible(false)}>
+      {children}
+      {visible && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 pointer-events-none">
+          <div className="rounded-lg px-3 py-2 shadow-lg text-center border border-gray-200"
+            style={{ 
+              fontSize: '12px', lineHeight: '1.5',
+              whiteSpace: 'nowrap',        // ← 줄바꿈 없이 한 줄
+              background: 'white',         // ← 흰색 배경
+              color: '#374151',          // ← 텍스트 어두운 회색
+            }}>
+            {text}
+          </div>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent"
+            style={{ borderTopColor: 'white'}}/>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function BusinessPlan() {
   const [searchParams] = useSearchParams();
-
+  const location = useLocation(); 
   const [saved, setSaved] = useState(false);
   const [showDownloadModal, setShowDownloadModal] = useState(false);
   const [currentSaveId, setCurrentSaveId] = useState<string | null>(null);
@@ -191,6 +217,15 @@ export default function BusinessPlan() {
       }
     }
   }, [searchParams]);
+
+    useEffect(() => {
+    const keyword = location.state?.keyword;
+    if (!keyword) return;
+    setPlan(prev => ({
+      ...prev,
+      title: `${keyword} 기반 창업 사업계획서`,
+    }));
+  }, [location.state]); 
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -312,52 +347,59 @@ export default function BusinessPlan() {
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.hwp" className="hidden" onChange={handleFileAttach} />
+         
+          {/* ↓ 기존 버튼을 Tooltip으로 감싸기 */}
+          <Tooltip text={"공고 양식 파일을 업로드하면\n해당 양식에 맞게 섹션이 자동 구성됩니다."}>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={attachState === 'loading'}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:border-[#00C9A7] hover:text-[#00C9A7] transition-colors disabled:opacity-40 text-gray-600"
+              style={{ fontSize: '13px' }}
+            >
+              <Paperclip className="w-4 h-4" />
+              양식 첨부하기
+              {attachState === 'loading' && <Loader2 className="w-3.5 h-3.5 animate-spin ml-1" />}
+              {attachState === 'done' && attachedFileName && (
+                <span className="flex items-center gap-1 ml-1 px-2 py-0.5 rounded-full text-xs"
+                  style={{ background: '#EDE9FE', color: '#7C3AED' }}>
+                  <FileText className="w-3 h-3" />
+                  <span className="max-w-[80px] truncate">{attachedFileName}</span>
+                  <button onClick={(e) => { e.stopPropagation(); removeAttachment(); }}>
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              )}
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={attachState === 'loading'}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:border-[#00C9A7] hover:text-[#00C9A7] transition-colors disabled:opacity-40 text-gray-600"
-            style={{ fontSize: '13px' }}
-          >
-            <Paperclip className="w-4 h-4" />
-            양식 첨부하기
-            {attachState === 'loading' && <Loader2 className="w-3.5 h-3.5 animate-spin ml-1" />}
-            {attachState === 'done' && attachedFileName && (
-              <span className="flex items-center gap-1 ml-1 px-2 py-0.5 rounded-full text-xs"
-                style={{ background: '#EDE9FE', color: '#7C3AED' }}>
-                <FileText className="w-3 h-3" />
-                <span className="max-w-[80px] truncate">{attachedFileName}</span>
-                <button onClick={(e) => { e.stopPropagation(); removeAttachment(); }}>
-                  <X className="w-3 h-3" />
-                </button>
-              </span>
-            )}
-          </button>
+          <Tooltip text={"보유기술, 창업동기, 마케팅전략 등\n내 정보를 입력하면 AI가 더 정확하게 작성해요."}>
+            <button
+              onClick={() => setShowUserDataModal(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:border-[#00C9A7] hover:text-[#00C9A7] transition-colors text-gray-600"
+              style={{ fontSize: '13px' }}
+            >
+              <Database className="w-4 h-4" />
+              내 데이터 입력
+              {(userData.적용분야.length > 0 || userData.창업동기) && (
+                <span className="w-2 h-2 rounded-full bg-[#00C9A7]" />
+              )}
+            </button>
+          </Tooltip>
 
-          <button
-            onClick={() => setShowUserDataModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:border-[#00C9A7] hover:text-[#00C9A7] transition-colors text-gray-600"
-            style={{ fontSize: '13px' }}
-          >
-            <Database className="w-4 h-4" />
-            내 데이터 입력
-            {(userData.적용분야.length > 0 || userData.창업동기) && (
-              <span className="w-2 h-2 rounded-full bg-[#00C9A7]" />
-            )}
-          </button>
-
-          <button
-            onClick={generateBusinessPlan}
-            disabled={isGenerating}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-white transition-opacity hover:opacity-90 disabled:opacity-50"
-            style={{ background: '#00C9A7', fontSize: '13px' }}
-          >
-            {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <PenLine className="w-4 h-4" />}
-            {isGenerating ? 'AI 작성 중...' : '사업계획서 작성하기'}
-          </button>
+          <Tooltip text={"입력한 데이터를 바탕으로 AI가\n사업계획서 초안을 자동으로 작성합니다."}>
+            <button
+              onClick={generateBusinessPlan}
+              disabled={isGenerating}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              style={{ background: '#00C9A7', fontSize: '13px' }}
+            >
+              {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <PenLine className="w-4 h-4" />}
+              {isGenerating ? 'AI 작성 중...' : '사업계획서 작성하기'}
+            </button>
+          </Tooltip>
+        
         </div>
       </div>
-
       <div className="flex-shrink-0 border-b" style={{ borderColor: 'rgba(0,0,0,0.06)' }} />
 
       {/* 문서 영역 */}

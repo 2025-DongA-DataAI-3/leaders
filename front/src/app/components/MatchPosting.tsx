@@ -175,6 +175,7 @@ export default function MatchPosting() {
   const [isNotificationOn, setIsNotificationOn] = useState(false);
   const [currentPage, setCurrentPage]           = useState(1);
   const [showMyPosts, setShowMyPosts]           = useState(false);
+  const [inputKeyword, setInputKeyword]   = useState('');
 
   // 스크랩 목록 로드 (localStorage 대신 DB)
 useEffect(() => {
@@ -306,7 +307,7 @@ useEffect(() => {
   );
   const startDayOfWeek = new Date(2026, selectedMonth - 1, 1).getDay();
 
-  useEffect(() => { setCurrentPage(1); }, [searchKeyword, activeTab]);
+  useEffect(() => { setCurrentPage(1); }, [activeTab]);
 
   const supportTabs: Array<'전체' | SupportType> = ['전체', '창업자금 지원', '창업교육지원', '창업공간지원', '기타'];
   const tabIcons: Record<string, ReactNode> = {
@@ -315,6 +316,12 @@ useEffect(() => {
     '창업교육지원':  <GraduationCap className="w-4 h-4" />,
     '창업공간지원':  <Building2 className="w-4 h-4" />,
     '기타':          <HelpCircle className="w-4 h-4" />,
+  };
+
+   
+  const handleSearch = () => {
+    setSearchKeyword(inputKeyword);
+    setCurrentPage(1);
   };
 
   return (
@@ -334,11 +341,12 @@ useEffect(() => {
               <div className="flex-1">
                 <Input
                   placeholder="지원사업명 또는 주관기관 검색..."
-                  value={searchKeyword}
-                  onChange={(e) => setSearchKeyword(e.target.value)}
+                  value={inputKeyword}                          
+                  onChange={(e) => setInputKeyword(e.target.value)} 
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}  
                 />
               </div>
-              <Button variant="primary" onClick={() => setSearchKeyword(searchKeyword)}>
+              <Button variant="primary" onClick={handleSearch}>  
                 검색
               </Button>
             </div>

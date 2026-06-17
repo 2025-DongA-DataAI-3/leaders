@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { TrendingUp, ChevronRight, ArrowLeft, Zap, ExternalLink, Newspaper } from "lucide-react";
 import * as d3 from "d3";
+import { useNavigate } from "react-router-dom";
 
 interface SeedAnalysis {
   reason:       string;
@@ -13,199 +14,7 @@ interface SeedAnalysis {
   category:     string;
 }
 
-const SEED_DATA: Record<string, SeedAnalysis> = {
-  스마트스토어: {
-    category: "AI/기술창업",
-    reason: "1인 창업자의 온라인 판매 진입 장벽이 낮아지면서 네이버 스마트스토어 신규 개설 수가 매년 증가하고 있습니다. 소자본으로 시작 가능한 구조와 SNS 연동 마케팅이 결합되며 주목받고 있습니다.",
-    startupItems: ["온라인 쇼핑몰", "핸드메이드 제품 판매", "리셀링 스토어", "디지털 콘텐츠 판매"],
-    market: "국내 이커머스 시장은 2024년 기준 약 228조원 규모로, 네이버 스마트스토어 입점 사업자 수는 60만 개를 돌파했습니다. 1인 셀러 비중이 전체의 70% 이상을 차지합니다.",
-    govLinks: [
-      { label: "소상공인시장진흥공단 온라인 판로 지원", url: "https://www.semas.or.kr" },
-      { label: "중소벤처기업부 디지털 전환 바우처", url: "https://www.mss.go.kr" },
-    ],
-    headlines: [
-      { title: "네이버 스마트스토어 60만 돌파…1인 셀러 전성시대", url: "https://n.news.naver.com" },
-      { title: "스마트스토어 월 매출 1000만원 달성 비결은?", url: "https://n.news.naver.com" },
-      { title: "정부, 소상공인 온라인 판로 지원 예산 확대", url: "https://n.news.naver.com" },
-    ],
-  },
-  전자책: {
-    category: "콘텐츠",
-    reason: "지식 콘텐츠 소비가 디지털화되면서 전문가 개인이 직접 전자책을 제작·판매하는 흐름이 확산되고 있습니다.",
-    startupItems: ["전자책 출판", "지식 콘텐츠 플랫폼", "PDF 강의 판매", "뉴스레터 구독 비즈니스"],
-    market: "국내 전자책 시장은 연평균 15% 성장 중이며, 개인 작가의 셀프 퍼블리싱 비중이 2023년 대비 2배 이상 증가했습니다.",
-    govLinks: [{ label: "한국콘텐츠진흥원 1인 창작자 지원", url: "https://www.kocca.kr" }],
-    headlines: [
-      { title: "전자책 셀프 출판 시장 급성장…개인 작가 수익화 활발", url: "https://n.news.naver.com" },
-      { title: "크몽 전자책 거래액 전년比 40% 증가", url: "https://n.news.naver.com" },
-      { title: "지식 콘텐츠 플랫폼 클래스101, 전자책 카테고리 신설", url: "https://n.news.naver.com" },
-    ],
-  },
-  무인카페: {
-    category: "푸드/외식",
-    reason: "인건비 부담과 비대면 소비 선호가 맞물리며 무인 카페 창업이 급증하고 있습니다.",
-    startupItems: ["무인 카페", "무인 아이스크림 할인점", "무인 스터디카페", "무인 편의점"],
-    market: "무인 점포 수는 2023년 기준 전국 5만 개를 돌파했습니다. 무인카페 창업 비용은 일반 카페 대비 30~50% 낮습니다.",
-    govLinks: [
-      { label: "소상공인진흥공단 창업 지원 프로그램", url: "https://www.semas.or.kr" },
-      { label: "중소벤처기업부 혁신 창업 패키지", url: "https://www.mss.go.kr" },
-    ],
-    headlines: [
-      { title: "무인카페 전국 1만 개 돌파…인건비 절감 창업 인기", url: "https://n.news.naver.com" },
-      { title: "무인 점포 창업 열풍, 소자본 창업자 몰린다", url: "https://n.news.naver.com" },
-      { title: "무인카페 프랜차이즈 시장 경쟁 본격화", url: "https://n.news.naver.com" },
-    ],
-  },
-  플리마켓: {
-    category: "공간/오프라인",
-    reason: "중고 거래 문화 확산과 핸드메이드·로컬 브랜드에 대한 소비자 관심이 높아지면서 플리마켓이 창업 테스트베드로 주목받고 있습니다.",
-    startupItems: ["핸드메이드 공예품 판매", "빈티지 의류 리셀링", "로컬 푸드 판매", "DIY 소품 브랜드"],
-    market: "서울시 공공 플리마켓 연간 방문객이 200만 명을 넘어섰습니다.",
-    govLinks: [{ label: "서울시 사회적경제 지원센터", url: "https://www.sehub.net" }],
-    headlines: [
-      { title: "플리마켓 창업 열풍…소자본 브랜드 테스트 공간으로", url: "https://n.news.naver.com" },
-      { title: "서울 성수동 플리마켓 방문객 100만 명 돌파", url: "https://n.news.naver.com" },
-      { title: "핸드메이드 브랜드, 플리마켓에서 온라인으로 확장", url: "https://n.news.naver.com" },
-    ],
-  },
-  AI교육: {
-    category: "교육",
-    reason: "생성형 AI 확산으로 AI 리터러시 수요가 폭발적으로 증가했습니다.",
-    startupItems: ["AI 활용 강의 플랫폼", "기업 대상 AI 교육 컨설팅", "어린이 코딩·AI 교육", "AI 프롬프트 튜터링"],
-    market: "국내 에듀테크 시장은 2025년 5조원 규모로 성장 전망입니다.",
-    govLinks: [
-      { label: "과학기술정보통신부 AI 교육 바우처", url: "https://www.msit.go.kr" },
-      { label: "중소벤처기업부 AI 바우처 지원사업", url: "https://www.mss.go.kr" },
-    ],
-    headlines: [
-      { title: "AI 교육 스타트업 투자 급증…1인 강사도 수익화 성공", url: "https://n.news.naver.com" },
-      { title: "직장인 AI 역량 교육 수요 폭발…오프라인 강의도 인기", url: "https://n.news.naver.com" },
-      { title: "정부, AI 교육 바우처 2026년 예산 대폭 확대", url: "https://n.news.naver.com" },
-    ],
-  },
-  디지털노마드: {
-    category: "디지털서비스",
-    reason: "재택근무 및 원격 근무 문화 정착으로 장소에 구애받지 않는 업무 방식이 확산되고 있습니다.",
-    startupItems: ["원격 근무 컨설팅", "디지털 노마드 커뮤니티 운영", "공유 오피스 큐레이션", "원격 팀 빌딩 서비스"],
-    market: "국내 프리랜서 인구는 2024년 기준 약 450만 명으로, 전체 취업자의 16%를 차지합니다.",
-    govLinks: [{ label: "중소벤처기업부 1인 기업 지원사업", url: "https://www.mss.go.kr" }],
-    headlines: [
-      { title: "디지털 노마드 인구 100만 시대…관련 서비스 창업 주목", url: "https://n.news.naver.com" },
-      { title: "원격 근무 확산에 공유 오피스 수요 급증", url: "https://n.news.naver.com" },
-      { title: "프리랜서 플랫폼 크몽·숨고, 거래액 1조 돌파", url: "https://n.news.naver.com" },
-    ],
-  },
-  제로웨이스트: {
-    category: "친환경",
-    reason: "환경에 대한 소비자 의식 향상과 ESG 트렌드가 맞물리며 제로웨이스트 제품 및 서비스 수요가 증가하고 있습니다.",
-    startupItems: ["제로웨이스트 편집숍", "친환경 포장재 판매", "리필 스테이션", "비건 생활용품 브랜드"],
-    market: "국내 친환경 소비재 시장은 2025년 8조원 규모 전망입니다.",
-    govLinks: [
-      { label: "환경부 녹색제품 인증 지원", url: "https://www.me.go.kr" },
-      { label: "한국환경산업기술원 친환경 창업 지원", url: "https://www.keiti.re.kr" },
-    ],
-    headlines: [
-      { title: "제로웨이스트 편집숍 전국 200개 돌파…친환경 창업 봇물", url: "https://n.news.naver.com" },
-      { title: "MZ세대 친환경 소비 확산…제로웨이스트 매출 3배 급증", url: "https://n.news.naver.com" },
-      { title: "환경부, 친환경 소상공인 지원 예산 500억 편성", url: "https://n.news.naver.com" },
-    ],
-  },
-  아이돌봄: {
-    category: "시니어/돌봄",
-    reason: "맞벌이 가구 증가와 돌봄 공백 문제가 사회적 이슈로 떠오르면서 민간 아이돌봄 서비스 수요가 급증하고 있습니다.",
-    startupItems: ["아이돌봄 매칭 플랫폼", "방과후 돌봄 서비스", "육아 코칭 서비스", "시간제 베이비시터 중개"],
-    market: "정부 아이돌봄 서비스 이용 가구는 연 50만 가구를 넘어섰습니다.",
-    govLinks: [
-      { label: "여성가족부 아이돌봄 서비스 사업자 등록", url: "https://www.mogef.go.kr" },
-      { label: "보건복지부 사회서비스 바우처", url: "https://www.moe.go.kr" },
-    ],
-    headlines: [
-      { title: "맞벌이 가구 증가에 아이돌봄 플랫폼 창업 봇물", url: "https://n.news.naver.com" },
-      { title: "정부 돌봄 바우처 확대…민간 서비스 시장 커진다", url: "https://n.news.naver.com" },
-      { title: "아이돌봄 O2O 스타트업 투자 유치 잇달아", url: "https://n.news.naver.com" },
-    ],
-  },
-  팝업스토어: {
-    category: "공간/오프라인",
-    reason: "체험 마케팅 트렌드와 MZ세대의 오프라인 경험 소비 선호가 결합되며 팝업스토어가 브랜드 론칭 및 테스트의 핵심 채널로 부상했습니다.",
-    startupItems: ["팝업스토어 기획·운영 대행", "단기 임대 공간 중개", "브랜드 체험 이벤트 기획", "소규모 팝업 F&B"],
-    market: "국내 팝업스토어 시장은 2024년 기준 약 1,200억원 규모로 추산됩니다.",
-    govLinks: [{ label: "소상공인시장진흥공단 상권 활성화 지원", url: "https://www.semas.or.kr" }],
-    headlines: [
-      { title: "팝업스토어 전성시대…성수동 단기 임대료 3배 급등", url: "https://n.news.naver.com" },
-      { title: "브랜드 론칭 채널로 팝업스토어 각광…기획사 창업 증가", url: "https://n.news.naver.com" },
-      { title: "단기 공간 임대 플랫폼 '스페이스클라우드' 거래액 급증", url: "https://n.news.naver.com" },
-    ],
-  },
-  출장세차: {
-    category: "시니어/돌봄",
-    reason: "차량 보유 인구 증가와 시간 절약 소비 트렌드가 맞물리며 방문형 세차 서비스 수요가 급성장하고 있습니다.",
-    startupItems: ["출장 세차 서비스", "차량 관리 구독 서비스", "세차 O2O 플랫폼", "아파트 단지 전담 세차"],
-    market: "국내 자동차 관리 서비스 시장은 연 3조원 이상 규모이며, 출장 세차 앱 이용자 수가 2023년 대비 150% 증가했습니다.",
-    govLinks: [{ label: "소상공인시장진흥공단 서비스업 창업 지원", url: "https://www.semas.or.kr" }],
-    headlines: [
-      { title: "출장 세차 앱 이용자 급증…1인 창업 인기 아이템으로", url: "https://n.news.naver.com" },
-      { title: "아파트 단지 전담 세차 서비스 확산…구독 모델 주목", url: "https://n.news.naver.com" },
-      { title: "세차 O2O 스타트업 누적 거래 100만 건 돌파", url: "https://n.news.naver.com" },
-    ],
-  },
-  비건: {
-    category: "친환경",
-    reason: "채식 인구 증가와 동물복지·환경 의식 향상이 맞물리며 비건 식품 및 라이프스타일 제품 수요가 빠르게 늘고 있습니다.",
-    startupItems: ["비건 카페·레스토랑", "비건 밀키트 판매", "식물성 단백질 식품 브랜드", "비건 화장품·생활용품"],
-    market: "국내 비건 식품 시장은 2025년 2,500억원 규모로 성장 전망이며, 채식 전문 식당 수가 2020년 대비 3배 이상 증가했습니다.",
-    govLinks: [
-      { label: "농림축산식품부 친환경 식품 창업 지원", url: "https://www.mafra.go.kr" },
-      { label: "한국비건인증원 비건 인증 안내", url: "https://www.vegan-korea.com" },
-    ],
-    headlines: [
-      { title: "비건 식품 시장 연 30% 성장…창업 아이템으로 주목", url: "https://n.news.naver.com" },
-      { title: "국내 채식 전문 식당 3배 증가…비건 카페도 급증", url: "https://n.news.naver.com" },
-      { title: "식물성 단백질 식품 스타트업 투자 유치 잇달아", url: "https://n.news.naver.com" },
-    ],
-  },
-  업사이클링: {
-    category: "친환경",
-    reason: "자원 순환 경제에 대한 관심이 높아지며 폐자재·중고 소재를 활용한 업사이클링 제품 창업이 늘고 있습니다.",
-    startupItems: ["업사이클링 패션 브랜드", "폐기물 재활용 소품 제작", "기업 협업 업사이클링 굿즈", "업사이클링 공방 운영"],
-    market: "글로벌 업사이클링 시장은 2027년 1,500억 달러 규모 전망이며, 국내에서도 업사이클링 브랜드 수가 매년 40% 이상 증가 중입니다.",
-    govLinks: [
-      { label: "환경부 자원순환 창업 지원", url: "https://www.me.go.kr" },
-      { label: "한국환경산업기술원 녹색 창업 패키지", url: "https://www.keiti.re.kr" },
-    ],
-    headlines: [
-      { title: "업사이클링 브랜드 전년比 40% 증가…ESG 협업 봇물", url: "https://n.news.naver.com" },
-      { title: "폐현수막·청바지로 가방 만드는 스타트업 매출 급증", url: "https://n.news.naver.com" },
-      { title: "대기업, 업사이클링 스타트업과 협업 러시", url: "https://n.news.naver.com" },
-    ],
-  },
-  홈케어: {
-    category: "시니어/돌봄",
-    reason: "고령화 사회 진입과 1인 가구 증가로 가정 내 청소·수리·관리 서비스 수요가 빠르게 성장하고 있습니다.",
-    startupItems: ["가정 청소 방문 서비스", "홈 인테리어 소품 판매", "1인 가구 생활 편의 구독", "가전 렌탈·관리 서비스"],
-    market: "국내 홈서비스 시장은 2025년 4조원 규모로 성장 전망입니다.",
-    govLinks: [{ label: "소상공인시장진흥공단 생활서비스업 지원", url: "https://www.semas.or.kr" }],
-    headlines: [
-      { title: "홈케어 플랫폼 누적 이용자 500만 돌파…시장 급성장", url: "https://n.news.naver.com" },
-      { title: "1인 가구 증가에 가정 방문 서비스 창업 인기", url: "https://n.news.naver.com" },
-      { title: "청소연구소·미소, 기업 가치 1조 돌파 목전", url: "https://n.news.naver.com" },
-    ],
-  },
-  펫케어: {
-    category: "시니어/돌봄",
-    reason: "반려동물 보유 인구 1,500만 시대를 맞아 펫 의료·미용·호텔·용품 등 관련 시장이 전방위 성장하고 있습니다.",
-    startupItems: ["반려동물 미용 서비스", "펫 호텔·유치원", "수제 펫푸드 브랜드", "펫 헬스케어 앱"],
-    market: "국내 펫 시장은 2026년 6조원 규모 전망이며, 반려동물 관련 창업 건수가 매년 20% 이상 증가 중입니다.",
-    govLinks: [{ label: "농림축산식품부 반려동물 연관산업 육성 지원", url: "https://www.mafra.go.kr" }],
-    headlines: [
-      { title: "펫 시장 6조원 전망…반려동물 창업 아이템 각광", url: "https://n.news.naver.com" },
-      { title: "펫케어 전용 로봇청소기 애견호텔 도입 확산", url: "https://n.news.naver.com" },
-      { title: "수제 펫푸드 스타트업 투자 유치 잇달아", url: "https://n.news.naver.com" },
-    ],
-  },
-};
 
-const SEED_KEYWORDS = new Set(Object.keys(SEED_DATA));
 
 const EXTRACTED_CATEGORY: Record<string, string> = {
   "편의점":       "공간/오프라인",
@@ -251,35 +60,38 @@ interface LinkData {
 }
 
 function mapApiItem(item: any): BubbleData {
-  const kw = item.keyword as string;
-  const isSeed = SEED_KEYWORDS.has(kw);
-  const seed = isSeed ? SEED_DATA[kw] : null;
+  const kw     = item.keyword as string;
+  const isSeed = item.type === "seed";
+
   return {
-    id: kw,
-    keyword: kw,
-    frequency: item.frequency ?? 0,
+    id:         kw,
+    keyword:    kw,
+    frequency:  item.frequency   ?? item.article_count ?? 0,
     changeRate: item.growth_rate ?? 0,
     x: 50, y: 50,
     size: isSeed
       ? Math.max(35, Math.min(65, (item.frequency ?? 0) / 20))
-      : Math.max(25, Math.min(45, (item.frequency ?? 0) * 2 + 40)),
-    category: item.category_id ?? "기타",
+      : Math.max(25, Math.min(45, (item.article_count ?? 0) * 2 + 40)),
+    category:     item.category ?? EXTRACTED_CATEGORY[kw] ?? "기타",
     isSeed,
-    reason: seed?.reason ?? item.reason ?? "분석 데이터를 불러오는 중입니다.",
-    startupItems: seed?.startupItems ?? (Array.isArray(item.startup_item_types) ? item.startup_item_types : []),
-    market: seed?.market ?? "",
-    govLinks: seed?.govLinks ?? [],
-    headlines: seed?.headlines ?? [],
-    marketAnalysis: !isSeed ? (item.market_analysis ?? "") : "",
-    newsArticles: !isSeed ? (item.news_articles ?? []) : [],
-    govSupports: !isSeed ? (item.government_support_links ?? []) : [],
+    reason:       item.reason ?? "",
+    startupItems: item.startup_item_types ?? [],
+    market:       "",
+    govLinks:     [],
+    headlines: (item.news_articles ?? []).map((a: any) => ({
+      title: a.title ?? "",
+      url:   a.url   ?? "",
+    })),
+    marketAnalysis: item.market_analysis ?? "",
+    newsArticles:   item.news_articles   ?? [],
+    govSupports:    item.government_support_links ?? [],
     scores: {
-      interest: item.score_interest ?? 0,
-      growth: item.score_growth ?? 0,
-      evidence: item.score_evidence ?? 0,
+      interest:  item.score_interest  ?? 0,
+      growth:    item.score_growth    ?? 0,
+      evidence:  item.score_evidence  ?? 0,
       relevance: item.score_relevance ?? 0,
-      recency: item.score_recency ?? 0,
-      total: item.ranking_score ?? 0,
+      recency:   item.score_recency   ?? 0,
+      total:     item.ranking_score   ?? 0,
     },
   };
 }
@@ -344,50 +156,43 @@ export default function KeywordMap() {
   const [selectedBubble, setSelectedBubble] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [zoomLevel, setZoomLevel] = useState(100);
-
+  const navigate = useNavigate();
+  
   useEffect(() => {
     fetch("http://localhost:8000/api/keyword-map")
       .then(res => res.json())
       .then(data => {
         const seedItems = data.seed_nodes.map((s: any, i: number) => ({
-          keyword:         s.keyword,
-          keyword_id:      s.keyword,
-          frequency:       1400 - i * 70,
-          growth_rate:     120 - i * 5,
-          ranking:         i + 1,
-          category_id:     SEED_DATA[s.keyword]?.category ?? "기타",
-          ranking_score:   0,
-          score_interest:  0, score_growth: 0, score_evidence: 0,
-          score_relevance: 0, score_recency: 0,
+          ...s,
+          frequency:     1400 - i * 70,
+          growth_rate:   120  - i * 5,
+          ranking_score: 0,
         }));
+
         const extractedItems = data.extracted_nodes.map((e: any, i: number) => ({
-          keyword:                  e.keyword,
-          keyword_id:               e.keyword,
-          frequency:                e.article_count ?? 0,
-          growth_rate:              0,
-          ranking:                  seedItems.length + i + 1,
-          category_id:              EXTRACTED_CATEGORY[e.keyword] ?? "기타",
-          ranking_score:            e.max_keybert_score ?? 0,
-          score_interest:  0, score_growth: 0, score_evidence: 0,
-          score_relevance: 0, score_recency: 0,
-          linked_seeds:             e.linked_seeds ?? [],
-          linked_seed_count:        e.linked_seed_count ?? 1,
-          news_articles:            e.news_articles ?? [],
-          government_support_links: e.government_support_links ?? [],
-          reason:                   e.reason ?? "",
-          startup_item_types:       e.startup_item_types ?? [],
+          ...e,
+          frequency:     e.article_count    ?? 0,
+          growth_rate:   0,
+          ranking_score: e.max_keybert_score ?? 0,
         }));
+
         setBubbleData([...seedItems, ...extractedItems].map(mapApiItem));
+
         setTop10Trends(
-          seedItems.slice(0, 10).map((item: any) => ({
-            rank: item.ranking, keyword: item.keyword,
-            change: `+${item.growth_rate}%`, category: item.category_id, isSeed: true,
+          seedItems.slice(0, 10).map((item: any, i: number) => ({
+            rank:     i + 1,
+            keyword:  item.keyword,
+            change:   `+${120 - i * 5}%`,
+            category: item.category ?? "기타",
+            isSeed:   true,
           }))
         );
+
         setNetworkLinks(
           data.links.map((l: any) => ({
-            source: l.source, target: l.target,
-            similarity: 1 / (l.linked_seed_count ?? 1),
+            source:            l.source,
+            target:            l.target,
+            similarity:        1 / (l.linked_seed_count ?? 1),
             linked_seed_count: l.linked_seed_count ?? 1,
           }))
         );
@@ -432,12 +237,12 @@ export default function KeywordMap() {
       .scaleExtent([0.3, 3])
       .on("zoom", (event) => {
         zoomG.attr("transform", event.transform);
-        setZoomLevel(Math.round(event.transform.k * 100));  // ← 퍼센트 업데이트
+        setZoomLevel(Math.round((event.transform.k / 0.86) * 100));
       });
 
     svg.call(zoom);
     // 초기 100% 기준으로 시작
-    svg.call(zoom.transform, d3.zoomIdentity);
+    svg.call(zoom.transform, d3.zoomIdentity.scale(0.86));
 
     // simulation
     const simulation = d3.forceSimulation(nodes as d3.SimulationNodeDatum[])
@@ -695,10 +500,19 @@ export default function KeywordMap() {
                 {selectedBubble && selectedData && (
                   <div className="mt-6">
                     <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-0.5">Trend Analysis</p>
-                        <h3 className="text-lg font-bold text-gray-900">{selectedData.keyword}</h3>
-                      </div>
+                      <div className="flex items-center gap-3">
+                        <div>
+                          <p className="text-xs text-gray-400 font-semibold uppercase tracking-widest mb-0.5">Trend Analysis</p>
+                          <h3 className="text-lg font-bold text-gray-900">{selectedData.keyword}</h3>
+                        </div>
+                        <button
+                          onClick={() => navigate("/business-plan", { state: { keyword: selectedData.keyword } })}
+                          className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                          style={{ background: "#00C9A7" }}>
+                          <Zap className="w-3.5 h-3.5" />
+                          이 키워드로 사업계획서 쓰기
+                        </button>
+                      </div> 
                       <button onClick={() => {
                         setSelectedBubble(null);
                         // SVG 노드 opacity 전체 초기화
@@ -740,55 +554,38 @@ export default function KeywordMap() {
                         })()}
                       </SectionCard>
                       <SectionCard meta={SECTION_META[3]}>
-                        {selectedData.isSeed ? (
-                          selectedData.govLinks.length > 0 ? (
-                            <div className="flex flex-col gap-2">
-                              {selectedData.govLinks.map((g, i) => (
-                                <a key={i} href={g.url} target="_blank" rel="noopener noreferrer"
-                                  className="flex items-center gap-2 text-xs font-medium rounded-lg px-3 py-2 hover:opacity-80 transition-opacity"
-                                  style={{ background: SECTION_META[3].light, color: SECTION_META[3].accent }}>
-                                  <ExternalLink className="w-3 h-3 flex-shrink-0" />{g.label}
-                                </a>
-                              ))}
-                            </div>
-                          ) : <p className="text-sm text-gray-400">연결된 정책 공고 없음</p>
-                        ) : (
-                          (selectedData.govSupports?.length ?? 0) > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                              {selectedData.govSupports.map((name, i) => (
-                                <span key={i} className="px-3 py-1 rounded-full text-xs font-semibold"
-                                  style={{ background: SECTION_META[3].light, color: SECTION_META[3].accent }}>{name}</span>
-                              ))}
-                            </div>
-                          ) : <p className="text-sm text-gray-400">연결된 정책 공고 없음</p>
-                        )}
+                        {(selectedData.govSupports?.length ?? 0) > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {selectedData.govSupports.map((name, i) => (
+                              <span key={i} className="px-3 py-1 rounded-full text-xs font-semibold"
+                                style={{ background: SECTION_META[3].light, color: SECTION_META[3].accent }}>
+                                {name}
+                              </span>
+                            ))}
+                          </div>
+                        ) : <p className="text-sm text-gray-400">연결된 정책 공고 없음</p>}
                       </SectionCard>
                       <SectionCard meta={SECTION_META[4]}>
-                        {(() => {
-                          const articles: NewsArticle[] = selectedData.isSeed
-                            ? selectedData.headlines.map(h => ({ title: h.title, url: h.url, source: "", published_at: "" }))
-                            : (selectedData.newsArticles ?? []);
-                          return articles.length > 0 ? (
-                            <div className="flex flex-col gap-2">
-                              {articles.map((a, i) => (
-                                <a key={i} href={a.url} target="_blank" rel="noopener noreferrer"
-                                  className="flex items-start gap-2 group rounded-lg px-3 py-2.5 hover:opacity-80 transition-opacity"
-                                  style={{ background: SECTION_META[4].light }}>
-                                  <Newspaper className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style={{ color: SECTION_META[4].accent }} />
-                                  <div className="flex-1 min-w-0">
-                                    <span className="text-xs font-medium leading-snug text-gray-700 group-hover:underline block">{a.title}</span>
-                                    {a.published_at && (
-                                      <span className="text-xs text-gray-400 mt-0.5 block">
-                                        {a.source && `${a.source} · `}{fmtDate(a.published_at)}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <ExternalLink className="w-3 h-3 ml-1 flex-shrink-0 opacity-40 group-hover:opacity-80" style={{ color: SECTION_META[4].accent }} />
-                                </a>
-                              ))}
-                            </div>
-                          ) : <p className="text-sm text-gray-400">관련 뉴스 없음</p>;
-                        })()}
+                        {(selectedData.newsArticles?.length ?? 0) > 0 ? (
+                          <div className="flex flex-col gap-2">
+                            {selectedData.newsArticles.map((a, i) => (
+                              <a key={i} href={a.url} target="_blank" rel="noopener noreferrer"
+                                className="flex items-start gap-2 group rounded-lg px-3 py-2.5 hover:opacity-80 transition-opacity"
+                                style={{ background: SECTION_META[4].light }}>
+                                <Newspaper className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style={{ color: SECTION_META[4].accent }} />
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-xs font-medium leading-snug text-gray-700 group-hover:underline block">{a.title}</span>
+                                  {a.published_at && (
+                                    <span className="text-xs text-gray-400 mt-0.5 block">
+                                      {a.source && `${a.source} · `}{fmtDate(a.published_at)}
+                                    </span>
+                                  )}
+                                </div>
+                                <ExternalLink className="w-3 h-3 ml-1 flex-shrink-0 opacity-40 group-hover:opacity-80" style={{ color: SECTION_META[4].accent }} />
+                              </a>
+                            ))}
+                          </div>
+                        ) : <p className="text-sm text-gray-400">관련 뉴스 없음</p>}
                       </SectionCard>
                     </div>
                   </div>

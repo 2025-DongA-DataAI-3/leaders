@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, forwardRef, type ButtonHTMLAttributes, type ReactNode, cloneElement, isValidElement } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
 import { Activity, MessageCircle, X, Bell, TrendingUp, FileText, Clock, CheckCheck, HelpCircle, Mail, Phone, ChevronRight, GraduationCap, Send, Maximize2, Minimize2 } from "lucide-react";
-import Onboarding from "./Onboarding";
+import Onboarding from "./Tutorial";
 import StartupSurvey from "./StartupSurvey";
 
 /* ==========================================================================
@@ -577,7 +577,7 @@ export default function Root() {
   return (
     <>
       {/* 조건부 모달 바인딩 계층 */}
-      {showOnboarding && <Onboarding onComplete={handleOnboardingComplete} />}
+      {showOnboarding && <Onboarding onComplete={handleOnboardingComplete}  navigate={navigate} />}
       {showSurvey && <StartupSurvey onComplete={handleSurveyComplete} />}
 
       <div className="min-h-screen bg-[#F5FFFE]">

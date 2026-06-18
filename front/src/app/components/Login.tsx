@@ -24,7 +24,10 @@ export default function Login() {
         localStorage.setItem("isLoggedIn", "true");
         localStorage.setItem("user_id", data.user.user_id);
         localStorage.setItem("userName", data.user.nickname);
-        localStorage.setItem("runTutorialTrigger", "true");
+        const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
+        if (!hasSeenOnboarding) {
+          localStorage.setItem("runTutorialTrigger", "true");
+        }
         navigate('/');
       } else {
         alert(data.message || "로그인 실패! 아이디와 비밀번호를 확인하세요.");
@@ -94,7 +97,10 @@ export default function Login() {
         localStorage.setItem('loginProvider', provider);
         localStorage.setItem('userName', data.user.nickname);
         localStorage.setItem('user_id', data.user.user_id);
-        localStorage.setItem('runTutorialTrigger', 'true');
+        const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
+        if (!hasSeenOnboarding) {
+          localStorage.setItem("runTutorialTrigger", "true");
+        }
         navigate('/');
       })
       .catch(() => alert('소셜 로그인 실패! 다시 시도해주세요.'));

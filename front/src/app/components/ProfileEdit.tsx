@@ -115,13 +115,15 @@ export default function ProfileEdit() {
   return (
     <div className="min-h-screen bg-[#F5FFFE] py-8 px-8">
       <div className="max-w-2xl mx-auto">
-        <ProfileButton
-          onClick={() => navigate("/mypage")}
-          className="flex items-center gap-2 text-gray-600 hover:text-[#00C9A7] mb-6 transition-colors"
-        > {/* ★ 기존 구형 button에서 로컬 컴포넌트로 치환됨 */}
-          <ArrowLeft className="w-4 h-4" />
-          마이페이지로 돌아가기
-        </ProfileButton>
+        <div className="flex justify-end mb-6">
+          <ProfileButton
+            onClick={() => navigate("/mypage")}
+            className="flex items-center gap-2 px-4 py-2 bg-[#00C9A7] text-white rounded-lg hover:bg-[#00b396] mb-6 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            마이페이지로 돌아가기
+          </ProfileButton>
+        </div>
 
         <div className="mb-8">
           <h1 className="mb-2 text-gray-900">회원정보 수정</h1>

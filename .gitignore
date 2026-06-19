@@ -20,6 +20,8 @@ build/
 # 캐시
 .cache/
 *.egg-info/
+__pycache__/
+*.pyc
 
 # 로그
 *.log

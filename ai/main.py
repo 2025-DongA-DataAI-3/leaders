@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers import business_plan 
 from routers import chat
-from routers import keyword_map_router
+from routers import business_plan
 
 app = FastAPI(title="THELEADERS AI Server")
 
@@ -16,7 +16,7 @@ app.add_middleware(
 
 app.include_router(chat.router, prefix="/api/ai", tags=["chat"]) # 챗봇
 app.include_router(business_plan.router, prefix="/api/ai/business-plan", tags=["business-plan"])  #사업계획서 양식 파싱
-app.include_router(keyword_map_router.router, prefix="", tags=["keyword-map"])
+app.include_router(business_plan.router, prefix="/api/business-plan", tags=["business-plan"])
 
 @app.get("/")
 def root():

@@ -161,7 +161,7 @@ export default function KeywordMap() {
   const [marketLoading, setMarketLoading] = useState(false);
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/keyword-map")
+    fetch("http://localhost:5000/api/keyword-map")
       .then(res => res.json())
       .then(data => {
         const seedItems = data.seed_nodes.map((s: any, i: number) => ({
@@ -314,7 +314,7 @@ export default function KeywordMap() {
           setMarketCache(cache => {
             if (cache[d.id]) return cache; // 이미 있으면 호출 안 함
             setMarketLoading(true);
-            fetch(`http://localhost:8000/api/keyword-map/market-analysis/${encodeURIComponent(d.id)}?reason=${encodeURIComponent(d.reason ?? "")}`)
+            fetch(`http://localhost:5000/api/keyword-map/market-analysis/${encodeURIComponent(d.id)}?reason=${encodeURIComponent(d.reason ?? "")}`)
               .then(res => res.json())
               .then(data => {
                 setMarketCache(prev => ({ ...prev, [d.id]: data.market_analysis }));

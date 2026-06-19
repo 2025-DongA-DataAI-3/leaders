@@ -5,6 +5,7 @@ import authRouter from './src/routes/auth.js'
 import pool from './src/db.js'
 import postsRouter from './src/routes/posts.js'
 import announcementsRouter from './src/routes/announcements.js'
+import keywordMapRouter from './src/routes/keywordMap.js'
 
 dotenv.config();
 
@@ -14,6 +15,8 @@ app.use(express.json());
 app.use('/api/posts', postsRouter); //커뮤니티
 app.use('/oauth', authRouter); // 소셜 로그인
 app.use('/api/announcements', announcementsRouter); // 공고 추천
+app.use('/api/keyword-map', keywordMapRouter); // 키워드맵
+
 // ==========================================
 // 📊 트렌드 API
 // ==========================================

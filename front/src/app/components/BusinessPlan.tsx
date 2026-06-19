@@ -218,14 +218,19 @@ export default function BusinessPlan() {
     }
   }, [searchParams]);
 
-    useEffect(() => {
+   const [keywordData, setKeywordData] = useState<any>(null);
+
+  useEffect(() => {
     const keyword = location.state?.keyword;
     if (!keyword) return;
-    setPlan(prev => ({
-      ...prev,
-      title: `${keyword} 기반 창업 사업계획서`,
-    }));
-  }, [location.state]); 
+
+    setPlan(prev => ({ ...prev, title: `${keyword} 기반 창업 사업계획서` }));
+
+    fetch(`http://localhost:8000/api/business-plan/keyword-data/${encodeURIComponent(keyword)}`)
+    .then(res => res.json())
+    .then(data => setKeywordData(data))
+    .catch(err => console.error('키워드 데이터 조회 실패:', err));
+  }, [location.state]);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -253,18 +258,42 @@ export default function BusinessPlan() {
   const updateCoverField = (field: keyof Omit<BusinessPlanData, 'content'>, val: string) =>
     setPlan(prev => ({ ...prev, [field]: val }));
 
-  const handleFileAttach = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileAttach = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     setAttachedFileName(file.name);
     setAttachState('loading');
-    setTimeout(() => {
-      const key = Object.keys(templateSections).find(k => file.name.includes(k)) ?? '예비창업패키지';
-      setSections(templateSections[key]);
-      setTemplateName(key);
+
+    const formData = new FormData();
+    formData.append('template', file);
+
+    try {
+      const response = await fetch('http://localhost:8000/api/business-plan/parse-template', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        alert(err.detail ?? '양식 분석에 실패했습니다.');
+        setAttachState('idle');
+        setAttachedFileName(null);
+        return;
+      }
+
+      const data = await response.json();
+      setSections(data.sections);
+      setTemplateName(data.templateName);
       setAttachState('done');
-    }, 1800);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (err) {
+      console.error('양식 분석 실패:', err);
+      alert('양식 분석 중 오류가 발생했습니다.');
+      setAttachState('idle');
+      setAttachedFileName(null);
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const removeAttachment = () => {
@@ -275,42 +304,38 @@ export default function BusinessPlan() {
   };
 
   const generateBusinessPlan = async () => {
-    setIsGenerating(true);
-    setPlan(prev => ({ ...prev, content: {} }));
-    try {
-      const response = await fetch('http://localhost:8000/api/ai/business-plan/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          template_name: attachedFileName ?? '003_창업_사업계획서_양식.hwp',
-          user_idea: plan.title,
-          service_description: plan.summary,
-          target_customer: userData.적용분야.join(', ') || '예비창업자 및 초기 소상공인',
-          news_summary: userData.창업동기 || '예비창업자 정보 탐색 시간 평균 18시간',
-          announcement_title: `${templateName} 모집 공고`,
-          announcement_content: userData.보유기술 || '소상공인의 디지털 전환 및 기술 기반 창업 지원',
-        }),
-      });
-      const reader = response.body!.getReader();
-      const decoder = new TextDecoder();
-      const firstBodyKey = sections.find(s => s.key !== 'cover')?.key ?? 'problemRecognition';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        const chunk = decoder.decode(value);
-        setPlan(prev => ({
-          ...prev,
-          content: { ...prev.content, [firstBodyKey]: (prev.content[firstBodyKey] ?? '') + chunk },
-        }));
-      }
-    } catch (err) {
-      console.error('사업계획서 생성 실패:', err);
-      alert('AI 생성 중 오류가 발생했습니다. FastAPI 서버가 실행 중인지 확인해주세요.');
-    } finally {
-      setIsGenerating(false);
-      scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  setIsGenerating(true);
+  setPlan(prev => ({ ...prev, content: {} }));
+
+  const keyword = location.state?.keyword ?? null;
+
+  try {
+    const response = await fetch('http://localhost:8000/api/business-plan/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sections,
+        keyword,
+        userData,
+        plan: { title: plan.title, summary: plan.summary },
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.detail ?? 'AI 생성 실패');
     }
-  };
+
+    const data = await response.json();
+    setPlan(prev => ({ ...prev, content: data.content }));
+  } catch (err) {
+    console.error('사업계획서 생성 실패:', err);
+    alert('AI 생성 중 오류가 발생했습니다. FastAPI 서버가 실행 중인지 확인해주세요.');
+  } finally {
+    setIsGenerating(false);
+    scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+};
 
   const handleSave = () => {
     const plans = getSavedPlans();

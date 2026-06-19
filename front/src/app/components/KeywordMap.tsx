@@ -14,28 +14,6 @@ interface SeedAnalysis {
   category:     string;
 }
 
-
-
-const EXTRACTED_CATEGORY: Record<string, string> = {
-  "편의점":       "공간/오프라인",
-  "스마트홈":     "AI/기술창업",
-  "로봇청소기":   "AI/기술창업",
-  "뷰티테크":     "AI/기술창업",
-  "클린뷰티":     "친환경",
-  "에어컨":       "기타",
-  "동물병원":     "시니어/돌봄",
-  "푸드테크":     "푸드/외식",
-  "키즈카페":     "공간/오프라인",
-  "리필스테이션": "친환경",
-  "커피머신":     "푸드/외식",
-  "다회용기":     "친환경",
-  "산후조리원":   "시니어/돌봄",
-  "프롭테크":     "디지털서비스",
-  "공유오피스":   "디지털서비스",
-  "그린바이오":   "친환경",
-  "안마의자":     "시니어/돌봄",
-};
-
 interface ScoreBreakdown {
   interest: number; growth: number; evidence: number;
   relevance: number; recency: number; total: number;
@@ -72,7 +50,7 @@ function mapApiItem(item: any): BubbleData {
     size: isSeed
       ? Math.max(35, Math.min(65, (item.frequency ?? 0) / 20))
       : Math.max(25, Math.min(45, (item.article_count ?? 0) * 2 + 40)),
-    category:     item.category ?? EXTRACTED_CATEGORY[kw] ?? "기타",
+    category:     item.category ?? "기타",
     isSeed,
     reason:       item.reason ?? "",
     startupItems: item.startup_item_types ?? [],
@@ -113,8 +91,6 @@ const SCORE_ITEMS = [
   { key: "interest",  label: "검색 관심도", weight: 0.30, color: "#00C9A7" },
   { key: "growth",    label: "검색 증가율", weight: 0.20, color: "#6366F1" },
   { key: "evidence",  label: "뉴스 근거량", weight: 0.20, color: "#F59E0B" },
-  { key: "relevance", label: "문서 관련도", weight: 0.20, color: "#3B82F6" },
-  { key: "recency",   label: "최신성",      weight: 0.10, color: "#EC4899" },
 ] as const;
 
 const SECTION_META = [

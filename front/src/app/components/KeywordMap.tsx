@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect, useRef } from "react";
 import { TrendingUp, ChevronRight, ArrowLeft, Zap, ExternalLink, Newspaper } from "lucide-react";
 import * as d3 from "d3";
@@ -498,7 +496,18 @@ export default function KeywordMap() {
                           <h3 className="text-lg font-bold text-gray-900">{selectedData.keyword}</h3>
                         </div>
                         <button
-                          onClick={() => navigate("/business-plan", { state: { keyword: selectedData.keyword } })}
+                          onClick={() => navigate("/business-plan", {
+                            state: {
+                              keyword: selectedData.keyword,
+                              // KeywordMap에서 버블 클릭 시 /api/keyword-map/market-analysis/{keyword}로
+                              // 새로 받아온 최신 시장분석이 있으면 함께 넘긴다.
+                              // BusinessPlan.tsx -> FastAPI /generate 요청 시 이 값을
+                              // marketAnalysisOverride로 그대로 전달하면, 백엔드가
+                              // keyword_details.market_analysis(DB 구버전)보다 우선 사용한다.
+                              // 캐시에 없으면 화면에 표시 중인 marketAnalysis(또는 빈 값)로 폴백.
+                              marketAnalysis: marketCache[selectedData.keyword] || selectedData.marketAnalysis || "",
+                            },
+                          })}
                           className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity"
                           style={{ background: "#00C9A7" }}>
                           <Zap className="w-3.5 h-3.5" />

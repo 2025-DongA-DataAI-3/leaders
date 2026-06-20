@@ -50,12 +50,14 @@ interface SavedPlan {
 
 const defaultSections: Section[] = [
   { key: 'cover',              label: '표지',           placeholder: '' },
+  { key: 'overview',           label: '아이템 개요',     sub: '핵심 한 줄 요약',           number: '0',   placeholder: '무엇을, 누구를 위해, 어떻게 해결하는지 핵심을 한두 문장으로 요약하세요.' },
   { key: 'problemRecognition', label: '문제인식',        sub: '개발배경 및 필요성',        number: '1',   placeholder: '창업자들이 겪는 문제점과 시장의 한계를 구체적으로 서술하세요.' },
   { key: 'marketAnalysis',     label: '목표시장 분석',   sub: '시장 규모 및 타겟 고객',     number: '1-1', placeholder: 'TAM·SAM·SOM 구조로 시장 규모와 타겟 고객을 분석하세요.' },
   { key: 'solution',           label: '해결방안',        sub: '실현가능성',                number: '2',   placeholder: '어떤 기술·방식으로 문제를 해결하는지 구체적으로 서술하세요.' },
   { key: 'competitiveness',    label: '경쟁력 확보방안', sub: '차별성 및 진입장벽',         number: '2-1', placeholder: '경쟁사 대비 차별점과 진입장벽을 서술하세요.' },
   { key: 'growthStrategy',     label: '성장전략',        sub: '단계별 사업화 방안',         number: '3',   placeholder: '분기별 목표와 사업화 로드맵을 작성하세요.' },
   { key: 'revenueModel',       label: '수익 구조',       sub: '수익 모델 및 매출 계획',     number: '4',   placeholder: '수익 모델, 가격 전략, 예상 매출을 작성하세요.' },
+  { key: 'team',                label: '팀 구성',         sub: '대표자 및 팀원 보유역량',    number: '5',   placeholder: '대표자와 팀원의 역할, 보유역량, 외부 협력기관을 서술하세요.' },
 ];
 
 const templateSections: Record<string, Section[]> = {
@@ -224,11 +226,20 @@ export default function BusinessPlan() {
     const keyword = location.state?.keyword;
     if (!keyword) return;
 
-    setPlan(prev => ({ ...prev, title: `${keyword} 기반 창업 사업계획서` }));
+    // TrendPilot 자체를 설명하는 초기 summary("뉴스데이터 및 창업지원공고데이터 기반...")가
+    // 그대로 남아있으면 GPT가 이걸 "이 사업 아이템의 요약"으로 오인해 본문 전체에
+    // TrendPilot 얘기가 섞여 들어가는 문제가 있었다. 키워드로 진입한 경우 즉시 비워서
+    // 그 오염을 막고, keyword-data 응답이 도착하면 트렌드 reason으로 채운다.
+    setPlan(prev => ({ ...prev, title: `${keyword} 기반 창업 사업계획서`, summary: '' }));
 
     fetch(`http://localhost:8000/api/business-plan/keyword-data/${encodeURIComponent(keyword)}`)
     .then(res => res.json())
-    .then(data => setKeywordData(data))
+    .then(data => {
+      setKeywordData(data);
+      if (data?.reason) {
+        setPlan(prev => ({ ...prev, summary: data.reason }));
+      }
+    })
     .catch(err => console.error('키워드 데이터 조회 실패:', err));
   }, [location.state]);
 
@@ -308,6 +319,11 @@ export default function BusinessPlan() {
   setPlan(prev => ({ ...prev, content: {} }));
 
   const keyword = location.state?.keyword ?? null;
+  // KeywordMap.tsx에서 "이 키워드로 사업계획서 쓰기" 클릭 시 함께 넘어오는
+  // 최신 시장분석(marketCache 값). FastAPI가 keyword_details.market_analysis
+  // (DB 구버전)보다 이 값을 우선 사용한다. 키워드 없이 직접 진입했거나
+  // 캐시가 비어 있었던 경우엔 빈 문자열/undefined이므로 백엔드가 자동으로 DB값에 폴백한다.
+  const marketAnalysisOverride = location.state?.marketAnalysis || null;
 
   try {
     const response = await fetch('http://localhost:8000/api/business-plan/generate', {
@@ -316,6 +332,7 @@ export default function BusinessPlan() {
       body: JSON.stringify({
         sections,
         keyword,
+        marketAnalysisOverride,
         userData,
         plan: { title: plan.title, summary: plan.summary },
       }),

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, forwardRef, type ButtonHTMLAttributes, type ReactNode, cloneElement, isValidElement } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
 import { Activity, MessageCircle, X, Bell, TrendingUp, FileText, Clock, CheckCheck, HelpCircle, Mail, Phone, ChevronRight, GraduationCap, Send, Maximize2, Minimize2 } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 import Onboarding from "./Tutorial";
 import StartupSurvey from "./StartupSurvey";
 
@@ -245,6 +246,22 @@ interface Message {
   content: string;
 }
 
+// 챗봇 답변 마크다운 렌더링 전용 스타일 매핑.
+// react-markdown은 기본적으로 스타일이 없는 시맨틱 태그만 뱉으므로,
+// 좁은 챗 버블 안에서도 보기 좋도록 li/p 등에 최소한의 여백·줄바꿈만 따로 지정한다.
+const markdownComponents = {
+  p: ({ children }: { children?: ReactNode }) => <p className="mb-1.5 last:mb-0 leading-relaxed">{children}</p>,
+  ul: ({ children }: { children?: ReactNode }) => <ul className="list-disc pl-4 mb-1.5 space-y-0.5">{children}</ul>,
+  ol: ({ children }: { children?: ReactNode }) => <ol className="list-decimal pl-4 mb-1.5 space-y-0.5">{children}</ol>,
+  li: ({ children }: { children?: ReactNode }) => <li className="leading-relaxed">{children}</li>,
+  strong: ({ children }: { children?: ReactNode }) => <strong className="font-semibold">{children}</strong>,
+  a: ({ href, children }: { href?: string; children?: ReactNode }) => (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: "#00A88E" }}>
+      {children}
+    </a>
+  ),
+};
+
 function AIChatbotBox({ onClose, isExpanded, onToggleExpand }: AIChatbotBoxProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -352,8 +369,16 @@ function AIChatbotBox({ onClose, isExpanded, onToggleExpand }: AIChatbotBoxProps
               }`}
               style={msg.role === "user" ? { backgroundColor: "#00C9A7" } : undefined}
             >
-              {/* 스트리밍 중 커서 효과 */}
-              {msg.content || (msg.role === "assistant" && isLoading ? "▋" : "")}
+              {/* 사용자 메시지는 마크다운 해석 없이 입력한 그대로(줄바꿈만 보존) 표시.
+                  assistant 메시지만 마크다운으로 렌더링해 굵게(**)/번호 리스트가
+                  별표·숫자 그대로 노출되던 문제를 해결한다. */}
+              {msg.role === "user" ? (
+                <span className="whitespace-pre-wrap">{msg.content}</span>
+              ) : msg.content ? (
+                <ReactMarkdown components={markdownComponents}>{msg.content}</ReactMarkdown>
+              ) : (
+                isLoading ? "▋" : ""
+              )}
             </div>
           </div>
         ))}

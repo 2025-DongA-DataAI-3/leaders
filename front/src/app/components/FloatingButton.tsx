@@ -91,7 +91,7 @@ const faqData = [
 
 // 상단 네비게이션 바 라우팅 아이템 배열
 const navItems = [
-  { path: "/", label: "키워드맵" },
+  { path: "/keyword", label: "키워드맵" },
   { path: "/match-posting", label: "추천 맞춤 공고" },
   { path: "/business-plan", label: "사업계획서 작성" },
   { path: "/community", label: "커뮤니티" },
@@ -490,13 +490,7 @@ export default function Root() {
 
     // 1단계 스텝 가드: 로그인 직후 트리거가 잡혔을 때 처음 가입자와 기존 미진단자 분기 실행
     if (runTutorialTrigger === "true") {
-      localStorage.removeItem("runTutorialTrigger");
-      if (!hasSeenOnboarding) {
-        setShowOnboarding(true);
-        setShowSurvey(false);
-      } else {
-        setShowSurvey(true);
-      }
+      // 트리거 제거하지 않고 온보딩 페이지(/)에 머물게만 함
       return;
     }
 
@@ -505,9 +499,7 @@ export default function Root() {
       setShowOnboarding(true);
       return;
     }
-    if (!hasCompletedSurvey) {
-      setShowSurvey(true);
-    }
+    
   }, [navigate, isLoggedIn, showOnboarding]);  
   
   /* ------------------------------------------------------------------------
@@ -531,18 +523,27 @@ export default function Root() {
   const handleOnboardingComplete = () => {
     localStorage.setItem("hasSeenOnboarding", "true"); // 튜토리얼 확인 각인
     setShowOnboarding(false);
-    
-    // 온보딩이 성공적으로 꺼졌으니 확인 후 즉시 연속해서 설문조사 창을 바톤 터치로 띄움
-    const hasCompletedSurvey = localStorage.getItem("hasCompletedSurvey");
-    if (!hasCompletedSurvey) {
-      setShowSurvey(true); 
-    }
   };
 
   const handleSurveyComplete = () => {
     localStorage.setItem("hasCompletedSurvey", "true"); // 진단 완료 각인
     setShowSurvey(false);
   };
+
+   /* ------------------------------------------------------------------------
+   🎓 [온보딩 → 튜토리얼 연결] 시작하기 버튼 클릭 시 튜토리얼 강제 실행 이벤트 수신기
+   - Onboarding.tsx에서 window.dispatchEvent(new CustomEvent("startTutorial")) 발송 시
+   - 이 리스너가 캐치하여 Tutorial(Onboarding) 컴포넌트를 화면에 마운트합니다.
+   - 페이지 이동(/keyword-map) 후 FloatingButton 마운트 완료 시점을 기다리기 위해
+     Onboarding.tsx에서 setTimeout 300ms 딜레이 후 이벤트를 발송합니다.
+   ------------------------------------------------------------------------ */
+  useEffect(() => {
+    const handleStartTutorial = () => {
+      setShowOnboarding(true);
+    };
+    window.addEventListener("startTutorial", handleStartTutorial);
+    return () => window.removeEventListener("startTutorial", handleStartTutorial);
+  }, []);
 
   /* ------------------------------------------------------------------------
      알림 인터랙션 상태 변경 핸들러 함수 구역

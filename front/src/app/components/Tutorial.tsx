@@ -373,44 +373,86 @@ export default function Onboarding({
 
   return (
     <div className="fixed inset-0 z-[100]">
-      {/* 어두운 배경 오버레이 */}
-      <div
-        className="absolute inset-0 bg-black/70"
-        onClick={handleSkip}
-      />
-
+      
       {/* 하이라이트 영역 */}
       {step.targetSelector && highlightPosition.width > 0 && (
         <>
-          {/* 하이라이트 박스 */}
+          {/* SVG 오버레이 — 둥근 직사각형 구멍 */}
+          <svg
+            className="absolute inset-0 w-full h-full"
+            style={{ zIndex: 100 }}
+            onClick={handleSkip}
+          >
+            <defs>
+              <radialGradient
+                id="hole-gradient"
+                cx={highlightPosition.left + highlightPosition.width / 2}
+                cy={highlightPosition.top + highlightPosition.height / 2}
+                r={Math.max(highlightPosition.width, highlightPosition.height) * 0.8}
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop offset="0%" stopColor="#00C9A7" stopOpacity="0.15" />
+                <stop offset="40%" stopColor="#00C9A7" stopOpacity="0.05" />
+                <stop offset="100%" stopColor="#000000" stopOpacity="0.75" />
+              </radialGradient>
+              <mask id="highlight-mask">
+                <rect width="100%" height="100%" fill="white" />
+                <rect
+                  x={highlightPosition.left - 12}
+                  y={highlightPosition.top - 12}
+                  width={highlightPosition.width + 24}
+                  height={highlightPosition.height + 24}
+                  rx="14"
+                  ry="14"
+                  fill="black"
+                />
+              </mask>
+            </defs>
+            {/* 어두운 오버레이 */}
+            <rect width="100%" height="100%" fill="rgba(0,0,0,0.7)" mask="url(#highlight-mask)" />
+            {/* 민트 그라디언트 — 구멍 주변에 번짐 */}
+            <rect width="100%" height="100%" fill="url(#hole-gradient)" mask="url(#highlight-mask)" />
+          </svg>
+
+          {/* 민트 외곽선 — 번지듯 글로우 */}
           <div
             className="absolute pointer-events-none"
             style={{
-              top: highlightPosition.top - 8,
-              left: highlightPosition.left - 8,
-              width: highlightPosition.width + 16,
-              height: highlightPosition.height + 16,
-              boxShadow:
-                "0 0 0 9999px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 201, 167, 0.5)",
-              borderRadius: "12px",
-              border: "3px solid #00C9A7",
+              top: highlightPosition.top - 12,
+              left: highlightPosition.left - 12,
+              width: highlightPosition.width + 24,
+              height: highlightPosition.height + 24,
+              borderRadius: 14,
+              border: "2px solid rgba(0,201,167,0.9)",
+              boxShadow: `
+                0 0 0 1px rgba(0,201,167,0.5),
+                0 0 8px 3px rgba(0,201,167,0.4),
+                0 0 20px 8px rgba(0,201,167,0.2),
+                0 0 40px 16px rgba(0,201,167,0.08)
+              `,
               zIndex: 101,
             }}
           />
-          {/* 펄스 애니메이션 */}
-          <div
-            className="absolute pointer-events-none animate-ping"
-            style={{
-              top: highlightPosition.top - 8,
-              left: highlightPosition.left - 8,
-              width: highlightPosition.width + 16,
-              height: highlightPosition.height + 16,
-              borderRadius: "12px",
-              border: "2px solid #00C9A7",
-              opacity: 0.3,
-              zIndex: 101,
-            }}
-          />
+
+          {/* 펄스 — SVG 둥근 직사각형 */}
+          <svg
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            style={{ zIndex: 101 }}
+          >
+            <rect
+              x={highlightPosition.left - 12}
+              y={highlightPosition.top - 12}
+              width={highlightPosition.width + 24}
+              height={highlightPosition.height + 24}
+              rx="14" ry="14"
+              fill="none"
+              stroke="#00C9A7"
+              strokeWidth="2"
+            >
+              <animate attributeName="opacity" values="0.5;0;0.5" dur="2s" repeatCount="indefinite" />
+              <animate attributeName="stroke-width" values="2;8;2" dur="2s" repeatCount="indefinite" />
+            </rect>
+          </svg>
         </>
       )}
 

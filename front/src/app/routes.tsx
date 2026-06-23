@@ -13,6 +13,8 @@ import ProfileEdit from "./components/ProfileEdit";
 import StartupSurvey from "./components/StartupSurvey";
 import CommunityWrite from "./components/CommunityWrite";
 import ForgotPassword from "./components/ForgotPassword";
+import Onboarding from "./components/Onboarding";
+
 
 // ==========================================
 // 💡 [START] StartupSurvey 래퍼 컴포넌트 시작
@@ -34,6 +36,7 @@ function StartupSurveyWrapper() {
 // ==========================================
 
 export const router = createBrowserRouter([
+  
   {
     path: "/login",
     Component: Login,
@@ -53,6 +56,10 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
+        Component: Onboarding
+      },
+      {
+        path: "keyword-map",
         Component: KeywordMap
       },
       {

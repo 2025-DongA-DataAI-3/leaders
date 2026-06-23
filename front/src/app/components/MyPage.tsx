@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { User, Heart, Bookmark, Settings, Bell, LogOut, UserX, HelpCircle, Calendar, DollarSign, TrendingUp, FileText, Clock, Save, Trash2, ChevronDown, ThumbsUp, MessageCircle } from "lucide-react";
+import { User, Heart, Bookmark, Settings, Bell, LogOut, UserX, HelpCircle, X, TrendingUp, FileText, Clock, Save, Trash2, ChevronDown, ThumbsUp, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router";
 import { initialPosts } from "../../app/data/posts";
 
@@ -13,12 +13,7 @@ interface SavedPlan {
   updated_at: string;
 }
 
-const savedKeywords = [
-  "SaaS 플랫폼",
-  "스마트팩토리",
-  "모바일 커머스",
-  "디지털헬스",
-];
+const [savedKeywords, setSavedKeywords] = useState<string[]>([]);
 
 const savedArticles = [
   {
@@ -187,24 +182,28 @@ export default function MyPage() {
   useEffect(() => {
   const user_id = localStorage.getItem('user_id');
 
-  // 저장된 공고 (기존 localStorage 유지)
   const saved = localStorage.getItem('savedPrograms');
   if (saved) {
     try { setSavedProgramIds(JSON.parse(saved)); } catch { setSavedProgramIds([]); }
   }
 
-  // 커뮤니티 글 (기존 localStorage 유지)
   const savedCommunity = localStorage.getItem('savedCommunityPosts');
   if (savedCommunity) {
     try { setSavedCommunityPostIds(JSON.parse(savedCommunity)); } catch { setSavedCommunityPostIds([]); }
   }
 
-  // 사업계획서 → API 조회로 교체
   if (user_id) {
+    // 사업계획서
     fetch(`http://localhost:5000/api/business-plan/list/${user_id}`)
       .then(res => res.json())
       .then(data => setSavedBusinessPlans(Array.isArray(data) ? data : []))
       .catch(() => setSavedBusinessPlans([]));
+
+    // 관심 키워드 ← 추가
+    fetch(`http://localhost:5000/api/keywords/${user_id}`)
+      .then(res => res.json())
+      .then(data => setSavedKeywords(Array.isArray(data) ? data.map((d: any) => d.keyword_id) : []))
+      .catch(() => setSavedKeywords([]));
   }
 }, []);
 
@@ -289,6 +288,19 @@ const handleDeleteAccount = async () => {
   } catch (err) {
     console.error('회원탈퇴 실패:', err);
     alert('회원탈퇴 중 오류가 발생했습니다.');
+  }
+};
+const handleDeleteKeyword = async (keyword: string) => {
+  const user_id = localStorage.getItem('user_id');
+  try {
+    await fetch('http://localhost:5000/api/keywords/delete', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id, keyword }),
+    });
+    setSavedKeywords(prev => prev.filter(k => k !== keyword));
+  } catch (err) {
+    console.error('키워드 삭제 에러:', err);
   }
 };
 
@@ -434,23 +446,27 @@ const handleDeleteAccount = async () => {
             />
           </MyPageButton>
           {expandedSections.keywords && (
-            <div className="px-8 pb-8">
-              <div className="flex flex-wrap gap-3">
-                {savedKeywords.map((keyword, idx) => (
-                  <div
-                    key={idx}
-                    className="px-4 py-2 bg-[#E0F7F3] text-[#00C9A7] rounded-full border border-[#00C9A7]/30 text-sm"
-                  >
-                    {keyword}
-                  </div>
-                ))}
-                <MyPageButton className="px-4 py-2 border-2 border-dashed border-gray-300 text-gray-500 rounded-full hover:border-[#00C9A7] hover:text-[#00C9A7] text-sm">
-                  {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
-                  + 키워드 추가
-                </MyPageButton>
-              </div>
-            </div>
-          )}
+  <div className="px-8 pb-8">
+    <div className="flex flex-wrap gap-3">
+      {savedKeywords.length === 0 ? (
+        <p className="text-sm text-gray-400">저장한 관심 키워드가 없습니다.</p>
+      ) : (
+        savedKeywords.map((keyword, idx) => (
+          <div key={idx}
+            className="flex items-center gap-1.5 px-4 py-2 bg-[#E0F7F3] text-[#00C9A7] rounded-full border border-[#00C9A7]/30 text-sm">
+            {keyword}
+            <button
+              onClick={() => handleDeleteKeyword(keyword)}
+              className="ml-1 hover:text-red-500 transition-colors"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        ))
+      )}
+    </div>
+  </div>
+)}
         </div>
 
         {/* 3. 저장 (2단계 아코디언) */}

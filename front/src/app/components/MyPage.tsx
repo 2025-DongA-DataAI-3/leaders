@@ -13,24 +13,6 @@ interface SavedPlan {
   updated_at: string;
 }
 
-const savedArticles = [
-  {
-    title: "국내 SaaS 시장 3년간 2배 성장 전망",
-    source: "전자신문",
-    date: "2026.05.10",
-  },
-  {
-    title: "스마트팩토리 정부 지원 사업 확대",
-    source: "한국경제",
-    date: "2026.05.09",
-  },
-  {
-    title: "모바일 커머스 시장 10조원 돌파",
-    source: "IT조선",
-    date: "2026.05.07",
-  },
-];
-
 // 정부지원 공고 데이터
 const allPrograms = [
   {
@@ -171,7 +153,6 @@ export default function MyPage() {
     keywords: false,
     saved: false,
     savedPrograms: false,
-    savedArticles: false,
     savedPosts: false,
     settings: false,
     accountSettings: false,
@@ -341,7 +322,7 @@ const handleDeleteKeyword = async (keyword: string) => {
               <div className="text-sm text-gray-600">관심 키워드</div>
             </div>
             <div className="bg-[#E0F7F3] rounded-lg p-4 text-center">
-              <div className="text-3xl text-[#00C9A7] mb-1 font-bold">{savedPrograms.length + savedArticles.length + savedCommunityPosts.length}</div>
+              <div className="text-3xl text-[#00C9A7] mb-1 font-bold">{savedPrograms.length + savedCommunityPosts.length}</div>
               <div className="text-sm text-gray-600">저장한 콘텐츠</div>
             </div>
           </div>
@@ -479,7 +460,7 @@ const handleDeleteKeyword = async (keyword: string) => {
               <Bookmark className="w-5 h-5 text-[#00C9A7]" />
               <h2 className="text-gray-900 text-xl font-bold">저장</h2>
               <span className="ml-2 px-2 py-0.5 bg-[#E0F7F3] text-[#00C9A7] rounded-full text-sm font-semibold">
-                {savedPrograms.length + savedArticles.length + savedCommunityPosts.length}
+                {savedPrograms.length + savedCommunityPosts.length}
               </span>
             </div>
             <ChevronDown
@@ -561,45 +542,6 @@ const handleDeleteKeyword = async (keyword: string) => {
                   </div>
                 )}
               </div>
-
-              {/* 저장한 기사 */}
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <MyPageButton
-                  onClick={() => toggleSection('savedArticles')}
-                  className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-[#00C9A7]" />
-                    <h3 className="text-gray-900 text-sm font-semibold">저장한 기사</h3>
-                    <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold">{savedArticles.length}</span>
-                  </div>
-                  <ChevronDown
-                    className={`w-4 h-4 text-gray-400 transition-transform ${
-                      expandedSections.savedArticles ? 'rotate-180' : ''
-                    }`}
-                  />
-                </MyPageButton>
-                {expandedSections.savedArticles && (
-                  <div className="p-4 pt-0">
-                    <div className="space-y-3">
-                      {savedArticles.map((article, idx) => (
-                        <div
-                          key={idx}
-                          className="p-3 border border-gray-200 rounded-lg hover:border-[#00C9A7] hover:shadow-md transition-all"
-                        >
-                          <h4 className="mb-1 text-sm font-medium text-gray-900">{article.title}</h4>
-                          <div className="flex items-center gap-3 text-xs text-gray-500">
-                            <span>{article.source}</span>
-                            <span>•</span>
-                            <span>{article.date}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
               {/* 저장한 커뮤니티 글 */}
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <MyPageButton

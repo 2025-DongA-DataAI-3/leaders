@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { User, Heart, Bookmark, Settings, Bell, LogOut, UserX, HelpCircle, X, TrendingUp, FileText, Clock, Save, Trash2, ChevronDown, ThumbsUp, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router";
 import { initialPosts } from "../../app/data/posts";
+import StartupSurvey from "../../app/components/StartupSurvey.tsx";
 
 interface SavedPlan {
   plan_id: string;
@@ -145,7 +146,7 @@ export default function MyPage() {
   const [savedBusinessPlans, setSavedBusinessPlans] = useState<SavedPlan[]>([]);
   const [savedCommunityPostIds, setSavedCommunityPostIds] = useState<string[]>([]);
   const [savedKeywords, setSavedKeywords] = useState<string[]>([]);
-
+  const [showSurvey, setShowSurvey] = useState(false);
 
   // 아코디언 상태 관리
   const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({
@@ -732,19 +733,20 @@ const handleDeleteKeyword = async (keyword: string) => {
                       </MyPageButton>
                     </div>
 
+                    
                     <div className="p-3 border border-gray-200 rounded-lg flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <HelpCircle className="w-4 h-4 text-gray-600" />
+                        <Settings className="w-4 h-4 text-gray-600" />
                         <div>
-                          <div className="text-xs font-medium text-gray-900">온보딩 튜토리얼 다시 보기</div>
-                          <div className="text-xs text-gray-500">처음 사용법을 다시 확인</div>
+                          <div className="text-xs font-medium text-gray-900">창업 성향 진단 수정</div>
+                          <div className="text-xs text-gray-500">대상, 지역, 분야 등 입력 정보 변경</div>
                         </div>
                       </div>
                       <MyPageButton
-                        onClick={handleResetOnboarding}
+                        onClick={() => setShowSurvey(true)}
                         className="px-3 py-1.5 text-xs text-[#00C9A7] hover:bg-[#E0F7F3] rounded-lg"
-                      > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
-                        보기
+                      >
+                        수정
                       </MyPageButton>
                     </div>
 
@@ -775,7 +777,11 @@ const handleDeleteKeyword = async (keyword: string) => {
             </div>
           )}
         </div>
-
+        {/* ★ 창업 성향 진단 수정 모달 */}
+        {showSurvey && (
+          <StartupSurvey onComplete={() => setShowSurvey(false)} />
+        )}
+        
         {/* ★ 기존 인라인 모달 마크업 구역 전체를 로컬 컴포넌트 MyPageDialog로 치환함 */}
         <MyPageDialog
           isOpen={showDeleteConfirm}

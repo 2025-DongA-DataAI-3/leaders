@@ -109,7 +109,7 @@ function Sidebar({ selectedCategory, selectedSection, onSelectCategory, sections
   };
 
   return (
-    <nav className="w-56 shrink-0 bg-white border border-gray-200 rounded-xl overflow-hidden self-start">
+    <nav data-tutorial="community-category" className="w-56 shrink-0 bg-white border border-gray-200 rounded-xl overflow-hidden self-start">
       {sections.map((section) => (
         <div key={section.id}>
           <button
@@ -372,6 +372,7 @@ export default function Community() {
               </div>
               <div className="flex gap-2">
                 <CommButton
+                  data-tutorial="community-write-btn"
                   onClick={() => navigate('/community-write')}
                   className="flex items-center gap-2 px-4 py-2 bg-[#00C9A7] text-white rounded-lg hover:bg-[#00A88E] transition-colors"
                   style={{ fontSize: '14px' }}

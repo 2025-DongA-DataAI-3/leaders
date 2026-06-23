@@ -617,7 +617,7 @@ export default function Root() {
                 alt="TrendPilot"
                 className="h-9 w-auto"
               />
-              <span className="text-lg font-black whitespace-nowrap" style={{ color: '#1F2937' }}>
+              <span className="text-xl font-black whitespace-nowrap" style={{ color: '#1F2937' }}>
                 TrendPilot
               </span>
             </Link>
@@ -627,7 +627,7 @@ export default function Root() {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`px-3 py-2 rounded-lg transition-colors text-sm whitespace-nowrap ${
+                  className={`px-3 py-2 rounded-lg transition-colors text-base whitespace-nowrap ${  // text-sm → text-base
                     isActive(item.path) ? "text-[#00C9A7] font-medium" : "text-gray-600 hover:bg-gray-50"
                   }`}
                   style={isActive(item.path) ? { backgroundColor: "#E0F7F3" } : undefined}

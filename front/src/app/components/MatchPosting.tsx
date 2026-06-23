@@ -138,7 +138,8 @@ function Tabs({ activeTab, onChange, tabs }: { activeTab: string; onChange: (id:
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         return (
-          <button key={tab.id} onClick={() => onChange(tab.id)}
+           <button key={tab.id} onClick={() => onChange(tab.id)}
+            data-tutorial={tab.id === 'calendar' ? 'calendar-view-btn' : undefined}  // ← 이 줄 추가
             className={`flex items-center gap-2 px-4 py-1.5 rounded-xl text-sm font-medium transition-all ${isActive ? 'bg-white shadow-sm text-[#00C9A7]' : 'text-gray-600 hover:text-gray-900'}`}>
             {tab.icon}{tab.label}
           </button>
@@ -363,7 +364,7 @@ useEffect(() => {
                   onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}  
                 />
               </div>
-              <Button variant="primary" onClick={handleSearch}>  
+              <Button variant="primary" onClick={handleSearch} data-tutorial="announcement-search-btn">
                 검색
               </Button>
             </div>
@@ -371,6 +372,7 @@ useEffect(() => {
             {/* 오른쪽 절반: 내 맞춤 공고 보기 버튼 */}
             <div className="flex-1 flex justify-end items-center">
               <button
+                data-tutorial="my-match-btn"
                 onClick={() => setShowMyPosts(prev => !prev)}
                 className="flex items-center gap-3 px-5 py-2.5 rounded-xl transition-all"
                 style={{
@@ -420,6 +422,7 @@ useEffect(() => {
         </Card>
 
         {/* 뷰 모드 탭 + 카운터 */}
+        
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
           <Tabs
             activeTab={viewMode}
@@ -427,6 +430,7 @@ useEffect(() => {
             tabs={[
               { id: 'list',     label: 'D-Day 목록', icon: <List className="w-4 h-4" /> },
               { id: 'calendar', label: '캘린더 뷰',   icon: <CalendarIcon className="w-4 h-4" /> },
+              
             ]}
           />
           <div className="text-sm font-medium text-gray-500 self-end sm:self-auto">
@@ -441,17 +445,17 @@ useEffect(() => {
           <div className="flex items-center gap-2 mb-5">
             <button
               onClick={() => {
-  const user_id = localStorage.getItem('user_id');
-  const newVal = !isNotificationOn;
-  setIsNotificationOn(newVal);
-  if (user_id) {
-    fetch('/api/announcements/alert-setting', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id, enabled: newVal }),
-    });
-  }
-}}
+            const user_id = localStorage.getItem('user_id');
+            const newVal = !isNotificationOn;
+            setIsNotificationOn(newVal);
+            if (user_id) {
+              fetch('/api/announcements/alert-setting', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id, enabled: newVal }),
+              });
+            }
+          }}
               className="flex items-center gap-2 px-4 py-2 rounded-full border transition-all"
               style={{
                 background:  isNotificationOn ? '#00C9A7' : 'white',
@@ -557,7 +561,9 @@ useEffect(() => {
                               스크랩
                             </Button>
                             <a href={program.url} target="_blank" rel="noopener noreferrer" className="w-full">
-                              <button className="w-full px-4 py-2 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
+                              <button 
+                                data-tutorial="apply-btn"
+                                className="w-full px-4 py-2 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90"
                                 style={{ background: typeConfig.color }}>
                                 지원하기
                               </button>

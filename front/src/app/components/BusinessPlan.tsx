@@ -618,6 +618,7 @@ const handleDownloadPPT = () => {
           {/* ↓ 기존 버튼을 Tooltip으로 감싸기 */}
           <Tooltip text={"공고 양식 파일을 업로드하면\n해당 양식에 맞게 섹션이 자동 구성됩니다."}>
             <button
+              data-tutorial="attach-form-btn"
               onClick={() => fileInputRef.current?.click()}
               disabled={attachState === 'loading'}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:border-[#00C9A7] hover:text-[#00C9A7] transition-colors disabled:opacity-40 text-gray-600"
@@ -641,6 +642,7 @@ const handleDownloadPPT = () => {
 
           <Tooltip text={"보유기술, 창업동기, 마케팅전략 등\n내 정보를 입력하면 AI가 더 정확하게 작성해요."}>
             <button
+              data-tutorial="input-data-btn"
               onClick={() => setShowUserDataModal(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:border-[#00C9A7] hover:text-[#00C9A7] transition-colors text-gray-600"
               style={{ fontSize: '13px' }}
@@ -655,6 +657,7 @@ const handleDownloadPPT = () => {
 
           <Tooltip text={"입력한 데이터를 바탕으로 AI가\n사업계획서 초안을 자동으로 작성합니다."}>
             <button
+              data-tutorial="generate-bizplan-btn"
               onClick={generateBusinessPlan}
               disabled={isGenerating}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-white transition-opacity hover:opacity-90 disabled:opacity-50"
@@ -873,6 +876,7 @@ const handleDownloadPPT = () => {
             {saved ? '저장됨' : '임시저장'}
           </PlanButton>
           <PlanButton
+            data-tutorial="download-btn"
             onClick={() => setShowDownloadModal(true)}
             className="flex items-center gap-2 px-5 py-2 rounded-lg text-white hover:opacity-90 transition-opacity"
             style={{ background: '#00C9A7', fontSize: '13px' }}

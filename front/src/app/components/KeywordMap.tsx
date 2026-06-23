@@ -175,6 +175,16 @@ export default function KeywordMap() {
         );
       })
       .catch(err => console.error("키워드맵 API 호출 실패:", err));
+  },
+   []);
+  // 튜토리얼 viewMode 이벤트 리스너 — 별도 useEffect
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const mode = (e as CustomEvent).detail as "ranking" | "bubbles";
+      setViewMode(mode);
+    };
+    window.addEventListener("tutorial:setViewMode", handler);
+    return () => window.removeEventListener("tutorial:setViewMode", handler);
   }, []);
 
   const selectedData = bubbleData.find(b => b.id === selectedBubble) ?? null;
@@ -300,15 +310,10 @@ export default function KeywordMap() {
         }
       })
       .on("mouseenter", (event, d: any) => {
-        const totalPct = Math.min(Math.round(d.scores.total * 100), 100);
         let html = `
           <div style="margin-bottom:8px;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <div style="margin-bottom:4px;">
               <span style="font-size:12px;font-weight:700;color:#111;">${d.keyword}</span>
-              <span style="font-size:11px;font-weight:700;color:#00C9A7;">종합 ${d.scores.total.toFixed(2)}</span>
-            </div>
-            <div style="height:5px;background:#e5e7eb;border-radius:3px;overflow:hidden;">
-              <div style="height:100%;width:${totalPct}%;background:#00C9A7;border-radius:3px;"></div>
             </div>
             <div style="height:1px;background:#f0f0f0;margin:8px 0;"></div>
           </div>`;
@@ -396,7 +401,6 @@ export default function KeywordMap() {
                 {top10Trends.map(item => {
                   const isTop3    = item.rank <= 3;
                   const dotColors = ["#FFD700", "#C0C0C0", "#CD7F32"];
-                  const barWidths = ["90%", "75%", "65%"];
                   const barColors = ["#00C9A7", "#00B394", "#009E82"];
                   const catShort  = item.category?.split("/")[0] ?? item.category;
                   return (
@@ -405,29 +409,23 @@ export default function KeywordMap() {
                         style={{ background: isTop3 ? dotColors[item.rank - 1] : "#E5E7EB" }} />
                       <div className="flex-shrink-0 w-5 text-center">
                         {isTop3
-                          ? <span className="text-base font-black" style={{ color: barColors[item.rank - 1] }}>{item.rank}</span>
-                          : <span className="text-sm font-semibold text-gray-400">{item.rank}</span>}
+                          ? <span className="text-lg font-black" style={{ color: barColors[item.rank - 1] }}>{item.rank}</span>
+                          : <span className="text-base font-semibold text-gray-400">{item.rank}</span>}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className={`font-semibold text-sm truncate ${isTop3 ? "text-gray-900" : "text-gray-600"}`}>
+                          <span className={`font-semibold truncate ${isTop3 ? "text-base text-gray-900" : "text-base text-gray-600"}`}>
                             {item.keyword}
                           </span>
                         </div>
-                        {isTop3 ? (
-                          <div className="flex items-center gap-2 mt-1">
-                            <div style={{ height: "3px", width: "70px", background: "#e5e7eb", borderRadius: "2px", overflow: "hidden" }}>
-                              <div style={{ height: "100%", width: barWidths[item.rank - 1], background: barColors[item.rank - 1], borderRadius: "2px" }} />
-                            </div>
-                            <span style={{ fontSize: "10px", color: barColors[item.rank - 1], fontWeight: 600 }}>{catShort}</span>
-                          </div>
-                        ) : (
-                          <div className="text-xs text-gray-400">{item.category}</div>
-                        )}
+                        {/* 게이지 바 제거 — 카테고리 텍스트만 */}
+                        <span className="text-sm mt-0.5 block" style={{ color: isTop3 ? barColors[item.rank - 1] : "#9CA3AF" }}>
+                          {isTop3 ? catShort : item.category}
+                        </span>
                       </div>
                       <div className="flex items-center gap-0.5 flex-shrink-0">
                         <TrendingUp className="w-3 h-3 text-red-400" />
-                        <span className={`font-bold text-red-400 ${isTop3 ? "text-sm" : "text-xs"}`}>{item.change}</span>
+                        <span className={`font-bold text-red-400 ${isTop3 ? "text-base" : "text-sm"}`}>{item.change}</span>
                       </div>
                     </div>
                   );
@@ -436,6 +434,7 @@ export default function KeywordMap() {
               {viewMode === "ranking" && (
                 <div className="flex justify-center px-6 py-5 border-t border-gray-50 flex-shrink-0">
                   <button onClick={() => setViewMode("bubbles")}
+                    data-tutorial="bubble-map-btn"
                     className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition-opacity"
                     style={{ background: "#00C9A7" }}>
                     <Zap className="w-4 h-4" />
@@ -452,8 +451,9 @@ export default function KeywordMap() {
             <div className="flex-1">
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <div className="flex items-center justify-between mb-5">
-                  <p className="text-xs text-gray-400">버블에 마우스를 올리면 트렌드 점수, 클릭하면 상세 분석을 확인할 수 있어요. 휠로 확대/축소 가능합니다.</p>
+                  <p className="text-sm text-gray-400">버블에 마우스를 올리면 트렌드 점수, 클릭하면 상세 분석을 확인할 수 있어요. 휠로 확대/축소 가능합니다.</p>
                   <button onClick={() => setViewMode("ranking")}
+                    data-tutorial="ranking-btn"
                     className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white hover:opacity-90 shadow-sm"
                     style={{ background: "#00C9A7" }}>
                     <ArrowLeft className="w-4 h-4" />
@@ -461,11 +461,12 @@ export default function KeywordMap() {
                   </button>
                 </div>
 
-                  <div className="relative rounded-xl border border-gray-100 overflow-hidden"
-                  style={{
-                    background: "linear-gradient(135deg, #F8FFFE 0%, #F0F9FF 100%)",
-                    height: selectedBubble ? "300px" : "750px",
-                  }}>
+                  <div data-tutorial="keyword-map"
+                    className="relative rounded-xl border border-gray-100 overflow-hidden"
+                    style={{
+                      background: "linear-gradient(135deg, #F8FFFE 0%, #F0F9FF 100%)",
+                      height: selectedBubble ? "300px" : "750px",
+                    }}>
                   <svg ref={svgRef} className="w-full h-full" />
 
                   {/* 줌 레벨 표시 — 추가 */}
@@ -604,7 +605,7 @@ export default function KeywordMap() {
                         ) : <p className="text-sm text-gray-400">관련 뉴스 없음</p>}
                       </SectionCard>
                       <button
-                        onClick={() => navigate("/business-plan", {
+                          onClick={() => navigate("/business-plan", {
                           state: {
                             keyword: selectedData.keyword,
                             marketAnalysis: marketCache[selectedData.keyword] || selectedData.marketAnalysis || "",

@@ -149,16 +149,33 @@ function Tabs({ activeTab, onChange, tabs }: { activeTab: string; onChange: (id:
 }
 
 function Pagination({ currentPage, totalPages, onPageChange }: { currentPage: number; totalPages: number; onPageChange: (p: number) => void }) {
+  const PAGE_GROUP_SIZE = 10;
+  const currentGroup = Math.ceil(currentPage / PAGE_GROUP_SIZE);
+  const startPage = (currentGroup - 1) * PAGE_GROUP_SIZE + 1;
+  const endPage = Math.min(currentGroup * PAGE_GROUP_SIZE, totalPages);
+  const totalGroups = Math.ceil(totalPages / PAGE_GROUP_SIZE);
+
   return (
     <div className="flex items-center justify-center gap-2 mt-6">
-      <IconButton icon={<ChevronLeft className="w-4 h-4" />} onClick={() => onPageChange(Math.max(1, currentPage - 1))} />
-      {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+      {/* 이전 그룹 */}
+      <IconButton
+        icon={<ChevronLeft className="w-4 h-4" />}
+        onClick={() => onPageChange(Math.max(1, startPage - 1))}
+      />
+
+      {/* 현재 그룹의 페이지 번호들 */}
+      {Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i).map((p) => (
         <button key={p} onClick={() => onPageChange(p)}
           className={`w-8 h-8 rounded-xl text-sm font-medium transition-colors ${p === currentPage ? 'bg-[#00C9A7] text-white' : 'text-gray-600 hover:bg-gray-100'}`}>
           {p}
         </button>
       ))}
-      <IconButton icon={<ChevronRight className="w-4 h-4" />} onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} />
+
+      {/* 다음 그룹 */}
+      <IconButton
+        icon={<ChevronRight className="w-4 h-4" />}
+        onClick={() => onPageChange(Math.min(totalPages, endPage + 1))}
+      />
     </div>
   );
 }

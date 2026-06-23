@@ -7,6 +7,7 @@ import postsRouter from './src/routes/posts.js'
 import announcementsRouter from './src/routes/announcements.js'
 import keywordMapRouter from './src/routes/keywordMap.js'
 import businessPlanRouter from './src/routes/businessPlan.js'
+import keywordsRouter from './src/routes/keywords.js'
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use('/oauth', authRouter); // 소셜 로그인
 app.use('/api/announcements', announcementsRouter); // 공고 추천
 app.use('/api/keyword-map', keywordMapRouter); // 키워드맵
 app.use('/api/business-plan', businessPlanRouter); //사업계획서 임시저장
+app.use('/api/keywords', keywordsRouter); //키워드 저장
 
 // ==========================================
 // 📊 트렌드 API

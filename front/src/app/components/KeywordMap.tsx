@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { TrendingUp, ChevronRight, ArrowLeft, Zap, ExternalLink, Newspaper } from "lucide-react";
+import { TrendingUp, ChevronRight, ArrowLeft, Zap, ExternalLink, Newspaper, Heart } from "lucide-react";
 import * as d3 from "d3";
 import { useNavigate } from "react-router-dom";
+
 
 interface SeedAnalysis {
   reason:       string;
@@ -496,23 +497,32 @@ export default function KeywordMap() {
                           <h3 className="text-lg font-bold text-gray-900">{selectedData.keyword}</h3>
                         </div>
                         <button
-                          onClick={() => navigate("/business-plan", {
-                            state: {
-                              keyword: selectedData.keyword,
-                              // KeywordMap에서 버블 클릭 시 /api/keyword-map/market-analysis/{keyword}로
-                              // 새로 받아온 최신 시장분석이 있으면 함께 넘긴다.
-                              // BusinessPlan.tsx -> FastAPI /generate 요청 시 이 값을
-                              // marketAnalysisOverride로 그대로 전달하면, 백엔드가
-                              // keyword_details.market_analysis(DB 구버전)보다 우선 사용한다.
-                              // 캐시에 없으면 화면에 표시 중인 marketAnalysis(또는 빈 값)로 폴백.
-                              marketAnalysis: marketCache[selectedData.keyword] || selectedData.marketAnalysis || "",
-                            },
-                          })}
-                          className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-                          style={{ background: "#00C9A7" }}>
-                          <Zap className="w-3.5 h-3.5" />
-                          이 키워드로 사업계획서 쓰기
-                        </button>
+  onClick={() => {
+  const user_id = localStorage.getItem('user_id');
+  if (!user_id) {
+    alert('로그인이 필요합니다.');
+    return;
+  }
+  fetch('http://localhost:5000/api/keywords/save', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id, keyword: selectedData.keyword }),
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert(`'${selectedData.keyword}' 키워드가 저장되었습니다.`);
+      } else {
+        alert(data.message);
+      }
+    })
+    .catch(() => alert('저장 중 오류가 발생했습니다.'));
+}}
+  className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+  style={{ background: "#00C9A7" }}>
+  <Heart className="w-3.5 h-3.5" />
+  키워드 저장
+</button>
                       </div> 
                       <button onClick={() => {
                         setSelectedBubble(null);
@@ -593,6 +603,18 @@ export default function KeywordMap() {
                           </div>
                         ) : <p className="text-sm text-gray-400">관련 뉴스 없음</p>}
                       </SectionCard>
+                      <button
+                        onClick={() => navigate("/business-plan", {
+                          state: {
+                            keyword: selectedData.keyword,
+                            marketAnalysis: marketCache[selectedData.keyword] || selectedData.marketAnalysis || "",
+                          },
+                        })}
+                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-semibold hover:opacity-90 transition-opacity mt-1"
+                        style={{ background: "#00C9A7", fontSize: '14px' }}>
+                        <Zap className="w-4 h-4" />
+                        이 키워드로 사업계획서 쓰기
+                      </button>
                     </div>
                   </div>
                 )}

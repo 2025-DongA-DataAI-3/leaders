@@ -4,6 +4,9 @@ import { useSearchParams } from 'react-router';
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { useLocation } from "react-router-dom";
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
+import pptxgen from 'pptxgenjs';
+import { saveAs } from 'file-saver';
 
 const A4_W = 794;
 const A4_H = 1122;
@@ -406,6 +409,198 @@ export default function BusinessPlan() {
     scrollRef.current?.scrollTo({ top: (page - 1) * (A4_H + PAGE_GAP), behavior: 'smooth' });
   };
 
+  // PDF 다운로드
+const handleDownloadPDF = () => {
+  const sections = bodySections.map(section => `
+    <div style="margin-bottom: 28px;">
+      <div style="border-bottom: 2px solid #00C9A7; padding-bottom: 8px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+        ${section.number ? `<span style="background:#00C9A7; color:white; width:20px; height:20px; border-radius:4px; display:inline-flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; flex-shrink:0;">${section.number}</span>` : ''}
+        <span style="font-size:13px; font-weight:700; color:#111;">${section.label}</span>
+        ${section.sub ? `<span style="font-size:10px; color:#9CA3AF; margin-left:4px;">${section.sub}</span>` : ''}
+      </div>
+      <p style="font-size:13px; line-height:1.95; color:#374151; white-space:pre-wrap; margin:0;">${plan.content[section.key] ?? ''}</p>
+    </div>
+  `).join('');
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8" />
+      <title>${plan.title}</title>
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;800&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+          background: white;
+          color: #111;
+        }
+        .page {
+          width: 794px;
+          min-height: 1122px;
+          padding: 80px 72px;
+          margin: 0 auto;
+          page-break-after: always;
+        }
+        @media print {
+          body { margin: 0; }
+          .page { margin: 0; box-shadow: none; }
+          @page { size: A4; margin: 0; }
+        }
+      </style>
+    </head>
+    <body>
+      <!-- 표지 -->
+      <div class="page" style="display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+        <div style="width:100%; border-bottom: 1px solid #00C9A7; margin-bottom: 48px;"></div>
+        <div style="background:#E0F7F3; color:#00C9A7; padding:3px 12px; border-radius:999px; font-size:11px; font-weight:600; margin-bottom:20px;">${templateName}</div>
+        <h1 style="font-size:26px; font-weight:800; color:#111; margin-bottom:16px; line-height:1.4;">${plan.title}</h1>
+        <p style="font-size:14px; color:#666; line-height:1.7; margin-bottom:32px;">${plan.summary}</p>
+        <div style="width:100%; display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:24px;">
+          <div style="border-bottom:1px solid #f0f0f0; padding-bottom:8px; text-align:left;">
+            <div style="font-size:10px; color:#aaa; margin-bottom:4px;">대표자</div>
+            <div style="font-size:13px; color:#555;">${plan.founder}</div>
+          </div>
+          <div style="border-bottom:1px solid #f0f0f0; padding-bottom:8px; text-align:left;">
+            <div style="font-size:10px; color:#aaa; margin-bottom:4px;">작성일</div>
+            <div style="font-size:13px; color:#555;">${plan.date}</div>
+          </div>
+        </div>
+        <div style="margin-top:auto; padding-top:24px; border-top:1px solid #f0f0f0; width:100%; display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:12px; font-weight:700; color:#00C9A7;">TrendPilot</span>
+          <span style="font-size:10px; color:#ccc;">1</span>
+        </div>
+      </div>
+
+      <!-- 본문 -->
+      <div class="page">
+        ${sections}
+        <div style="margin-top:32px; padding-top:12px; border-top:1px solid rgba(0,0,0,0.07); display:flex; justify-content:space-between;">
+          <span style="font-size:9px; color:#D1D5DB;">TrendPilot</span>
+          <span style="font-size:9px; color:#D1D5DB;">2</span>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('팝업이 차단되었습니다. 팝업 허용 후 다시 시도하세요.');
+    return;
+  }
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.onload = () => {
+    printWindow.focus();
+    printWindow.print();
+  };
+};
+
+// Word(.docx) 다운로드
+const handleDownloadWord = async () => {
+  const children = [
+    new Paragraph({
+      text: plan.title,
+      heading: HeadingLevel.TITLE,
+    }),
+    new Paragraph({
+      text: plan.summary,
+      spacing: { after: 400 },
+    }),
+    new Paragraph({
+      children: [new TextRun({ text: `대표자: ${plan.founder}`, break: 1 }),
+                 new TextRun({ text: `작성일: ${plan.date}` })],
+      spacing: { after: 600 },
+    }),
+    ...bodySections.flatMap(section => [
+      new Paragraph({
+        text: `${section.number ? section.number + '. ' : ''}${section.label}${section.sub ? ' - ' + section.sub : ''}`,
+        heading: HeadingLevel.HEADING_1,
+        spacing: { before: 400, after: 200 },
+      }),
+      new Paragraph({
+        text: plan.content[section.key] ?? '',
+        spacing: { after: 300 },
+      }),
+    ]),
+  ];
+
+  const doc = new Document({
+    sections: [{ children }],
+  });
+
+  const blob = await Packer.toBlob(doc);
+  saveAs(blob, `${plan.title}.docx`);
+};
+
+// PPT(.pptx) 다운로드
+const handleDownloadPPT = () => {
+  const pptx = new pptxgen();
+  pptx.layout = 'LAYOUT_WIDE';
+
+  // 표지 슬라이드
+  const coverSlide = pptx.addSlide();
+  coverSlide.background = { color: 'FFFFFF' };
+  coverSlide.addText(plan.title, {
+    x: 0.5, y: 2.5, w: 9, h: 1.5,
+    fontSize: 28, bold: true, color: '111111',
+    align: 'center',
+  });
+  coverSlide.addText(plan.summary, {
+    x: 0.5, y: 4.2, w: 9, h: 0.8,
+    fontSize: 14, color: '666666',
+    align: 'center',
+  });
+  coverSlide.addText(`대표자: ${plan.founder}  |  작성일: ${plan.date}`, {
+    x: 0.5, y: 5.2, w: 9, h: 0.5,
+    fontSize: 12, color: '999999',
+    align: 'center',
+  });
+  coverSlide.addShape(pptx.ShapeType.rect, {
+    x: 0, y: 6.8, w: 10, h: 0.08,
+    fill: { color: '00C9A7' },
+    line: { color: '00C9A7' },
+  });
+
+  // 섹션별 슬라이드
+  bodySections.forEach(section => {
+    const slide = pptx.addSlide();
+    slide.background = { color: 'FFFFFF' };
+
+    // 상단 타이틀 바
+    slide.addShape(pptx.ShapeType.rect, {
+      x: 0, y: 0, w: 10, h: 1.1,
+      fill: { color: '00C9A7' },
+      line: { color: '00C9A7' },
+    });
+    slide.addText(
+      `${section.number ? section.number + '.  ' : ''}${section.label}`,
+      {
+        x: 0.3, y: 0.1, w: 9, h: 0.9,
+        fontSize: 20, bold: true, color: 'FFFFFF',
+      }
+    );
+    if (section.sub) {
+      slide.addText(section.sub, {
+        x: 0.3, y: 0.65, w: 9, h: 0.4,
+        fontSize: 11, color: 'E0F7F3',
+      });
+    }
+
+    // 본문 내용
+    slide.addText(plan.content[section.key] ?? '(내용 없음)', {
+      x: 0.5, y: 1.3, w: 9, h: 5.2,
+      fontSize: 13, color: '333333',
+      valign: 'top',
+      wrap: true,
+    });
+  });
+
+  pptx.writeFile({ fileName: `${plan.title}.pptx` });
+};
+
   const bodySections = sections.filter(s => s.key !== 'cover');
 
   return (
@@ -763,37 +958,51 @@ export default function BusinessPlan() {
 
       {/* 다운로드 모달 */}
       {showDownloadModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 overflow-hidden">
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <span style={{ fontSize: '15px', fontWeight: 700, color: '#111' }}>파일 형식 선택</span>
-              <button onClick={() => setShowDownloadModal(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-5 h-5" />
-              </button>
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 overflow-hidden">
+      <div className="flex items-center justify-between p-5 border-b border-gray-100">
+        <span style={{ fontSize: '15px', fontWeight: 700, color: '#111' }}>파일 형식 선택</span>
+        <button onClick={() => setShowDownloadModal(false)} className="text-gray-400 hover:text-gray-600">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+      <div className="p-4 space-y-2">
+        {[
+          {
+            format: 'PDF',
+            desc: 'PDF 문서 형식',
+            bg: '#FEF2F2', color: '#DC2626',
+            onClick: () => { handleDownloadPDF(); setShowDownloadModal(false); },
+          },
+          {
+            format: 'Word (.docx)',
+            desc: 'Microsoft Word 문서',
+            bg: '#EFF6FF', color: '#2563EB',
+            onClick: () => { handleDownloadWord(); setShowDownloadModal(false); },
+          },
+          {
+            format: 'PPT (.pptx)',
+            desc: '파워포인트 프레젠테이션',
+            bg: '#FFF7ED', color: '#EA580C',
+            onClick: () => { handleDownloadPPT(); setShowDownloadModal(false); },
+          },
+        ].map(({ format, desc, bg, color, onClick }) => (
+          <button key={format}
+            onClick={onClick}
+            className="w-full flex items-center gap-3 p-3 rounded-xl border-2 border-gray-100 hover:border-[#00C9A7] hover:bg-[#E0F7F3] transition-all">
+            <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: bg }}>
+              <FileDown className="w-4 h-4" style={{ color }} />
             </div>
-            <div className="p-4 space-y-2">
-              {[
-                { format: 'PDF',         desc: 'PDF 문서 형식',           bg: '#FEF2F2', color: '#DC2626' },
-                { format: 'Word',        desc: 'Microsoft Word (.docx)', bg: '#EFF6FF', color: '#2563EB' },
-                { format: 'HWP',         desc: '한글 문서 (.hwp)',        bg: '#FFF7ED', color: '#EA580C' },
-                { format: 'Google Docs', desc: 'Google 문서로 내보내기',  bg: '#F0FDF4', color: '#16A34A' },
-              ].map(({ format, desc, bg, color }) => (
-                <button key={format}
-                  onClick={() => { alert(`${format} 다운로드가 시작됩니다.`); setShowDownloadModal(false); }}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl border-2 border-gray-100 hover:border-[#00C9A7] hover:bg-[#E0F7F3] transition-all">
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: bg }}>
-                    <FileDown className="w-4 h-4" style={{ color }} />
-                  </div>
-                  <div className="text-left">
-                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#111' }}>{format}</div>
-                    <div style={{ fontSize: '11px', color: '#9CA3AF' }}>{desc}</div>
-                  </div>
-                </button>
-              ))}
+            <div className="text-left">
+              <div style={{ fontSize: '13px', fontWeight: 600, color: '#111' }}>{format}</div>
+              <div style={{ fontSize: '11px', color: '#9CA3AF' }}>{desc}</div>
             </div>
-          </div>
-        </div>
-      )}
+          </button>
+        ))}
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

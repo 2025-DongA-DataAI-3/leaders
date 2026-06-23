@@ -91,7 +91,7 @@ const faqData = [
 
 // 상단 네비게이션 바 라우팅 아이템 배열
 const navItems = [
-  { path: "/keyword", label: "키워드맵" },
+  { path: "/keyword-map", label: "키워드맵" },
   { path: "/match-posting", label: "추천 맞춤 공고" },
   { path: "/business-plan", label: "사업계획서 작성" },
   { path: "/community", label: "커뮤니티" },

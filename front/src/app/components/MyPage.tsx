@@ -13,8 +13,6 @@ interface SavedPlan {
   updated_at: string;
 }
 
-const [savedKeywords, setSavedKeywords] = useState<string[]>([]);
-
 const savedArticles = [
   {
     title: "국내 SaaS 시장 3년간 2배 성장 전망",
@@ -164,6 +162,8 @@ export default function MyPage() {
   const [savedProgramIds, setSavedProgramIds] = useState<string[]>([]);
   const [savedBusinessPlans, setSavedBusinessPlans] = useState<SavedPlan[]>([]);
   const [savedCommunityPostIds, setSavedCommunityPostIds] = useState<string[]>([]);
+  const [savedKeywords, setSavedKeywords] = useState<string[]>([]);
+
 
   // 아코디언 상태 관리
   const [expandedSections, setExpandedSections] = useState<{[key: string]: boolean}>({

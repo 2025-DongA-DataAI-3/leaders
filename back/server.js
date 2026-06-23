@@ -7,7 +7,7 @@ import postsRouter from './src/routes/posts.js'
 import announcementsRouter from './src/routes/announcements.js'
 import keywordMapRouter from './src/routes/keywordMap.js'
 import businessPlanRouter from './src/routes/businessPlan.js'
-import keywordsRouter from './src/routes/keywords.js'
+import keywordsRouter from './src/routes/keyword.js'
 
 dotenv.config();
 

@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 import olefile
 import os
 import json
-import subprocess
+import pdfplumber
 import mysql.connector
 
 from .section_guides import get_guide_for_section
@@ -80,11 +80,11 @@ def get_keyword_data(keyword: str):
 # 2. 양식 파일(PDF/HWP) 업로드 → 텍스트 추출 → 섹션 구조 파악
 # =====================================================
 def extract_pdf_text(pdf_path: str) -> str:
-    result = subprocess.run(
-        ["pdftotext", "-layout", pdf_path, "-"],
-        capture_output=True, text=True, check=True
-    )
-    return result.stdout
+    with pdfplumber.open(pdf_path) as pdf:
+        return "\n".join(
+            page.extract_text() or ""
+            for page in pdf.pages
+        )
 
 def extract_hwp_text(hwp_path: str) -> str:
     try:

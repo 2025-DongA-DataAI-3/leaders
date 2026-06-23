@@ -207,18 +207,28 @@ export default function BusinessPlan() {
   };
 
   useEffect(() => {
-    const savedId = searchParams.get('saved');
-    if (!savedId) return;
-    const found = getSavedPlans().find(p => p.id === savedId);
-    if (found) {
-      setPlan(found.plan);
-      setCurrentSaveId(savedId);
-      if (found.templateName && found.templateName !== '기본 양식') {
-        setTemplateName(found.templateName);
-        setSections(templateSections[found.templateName] ?? defaultSections);
+  const savedId = searchParams.get('saved');
+  if (!savedId) return;
+
+  fetch(`http://localhost:5000/api/business-plan/detail/${savedId}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.plan_id) {
+        setPlan(prev => ({
+          ...prev,
+          title: data.title,
+          summary: data.summary ?? prev.summary,
+          content: data.content ?? {},
+        }));
+        setCurrentSaveId(savedId);
+        if (data.template_name && data.template_name !== '기본 양식') {
+          setTemplateName(data.template_name);
+          setSections(templateSections[data.template_name] ?? defaultSections);
+        }
       }
-    }
-  }, [searchParams]);
+    })
+    .catch(err => console.error('불러오기 에러:', err));
+}, [searchParams]);
 
    const [keywordData, setKeywordData] = useState<any>(null);
 
@@ -354,23 +364,43 @@ export default function BusinessPlan() {
   }
 };
 
-  const handleSave = () => {
-    const plans = getSavedPlans();
-    const timestamp = Date.now();
-    if (currentSaveId) {
-      const updated = plans.map(p =>
-        p.id === currentSaveId ? { ...p, title: plan.title, timestamp, plan, templateName } : p
-      );
-      localStorage.setItem('savedBusinessPlans', JSON.stringify(updated));
+  const handleSave = async () => {
+  const user_id = localStorage.getItem('user_id');
+  if (!user_id) {
+    alert('로그인이 필요합니다.');
+    return;
+  }
+
+  const timestamp = Date.now();
+  const newPlanId = currentSaveId ?? `bp-${timestamp}`;
+
+  try {
+    const response = await fetch('http://localhost:5000/api/business-plan/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        plan_id: newPlanId,
+        user_id,
+        title: plan.title,
+        summary: plan.summary,
+        template_name: templateName,
+        content: plan.content,
+      }),
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      setCurrentSaveId(newPlanId);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
     } else {
-      const newSave: SavedPlan = { id: `bp-${timestamp}`, title: plan.title, timestamp, plan, templateName };
-      plans.push(newSave);
-      localStorage.setItem('savedBusinessPlans', JSON.stringify(plans));
-      setCurrentSaveId(newSave.id);
+      alert('저장 실패: ' + data.message);
     }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
+  } catch (err) {
+    console.error('저장 에러:', err);
+    alert('저장 중 오류가 발생했습니다.');
+  }
+};
 
   const goToPage = (page: number) => {
     scrollRef.current?.scrollTo({ top: (page - 1) * (A4_H + PAGE_GAP), behavior: 'smooth' });

@@ -4,20 +4,13 @@ import { useNavigate } from "react-router";
 import { initialPosts } from "../../app/data/posts";
 
 interface SavedPlan {
-  id: string;
+  plan_id: string;
   title: string;
-  timestamp: number;
-  plan: {
-    title: string;
-    summary: string;
-    background: string;
-    objective: string;
-    marketAnalysis: string;
-    businessModel: string;
-    timeline: string;
-    budget: string;
-    expectedRevenue: string;
-  };
+  summary: string;
+  template_name: string;
+  content: Record<string, string>;
+  created_at: string;
+  updated_at: string;
 }
 
 const savedKeywords = [
@@ -192,36 +185,28 @@ export default function MyPage() {
   });
 
   useEffect(() => {
-    // localStorage에서 저장된 공고 ID 가져오기
-    const saved = localStorage.getItem('savedPrograms');
-    if (saved) {
-      try {
-        setSavedProgramIds(JSON.parse(saved));
-      } catch (e) {
-        setSavedProgramIds([]);
-      }
-    }
+  const user_id = localStorage.getItem('user_id');
 
-    // localStorage에서 저장된 사업계획서 가져오기
-    const savedPlans = localStorage.getItem('savedBusinessPlans');
-    if (savedPlans) {
-      try {
-        setSavedBusinessPlans(JSON.parse(savedPlans));
-      } catch (e) {
-        setSavedBusinessPlans([]);
-      }
-    }
+  // 저장된 공고 (기존 localStorage 유지)
+  const saved = localStorage.getItem('savedPrograms');
+  if (saved) {
+    try { setSavedProgramIds(JSON.parse(saved)); } catch { setSavedProgramIds([]); }
+  }
 
-    // localStorage에서 저장된 커뮤니티 글 가져오기
-    const savedCommunity = localStorage.getItem('savedCommunityPosts');
-    if (savedCommunity) {
-      try {
-        setSavedCommunityPostIds(JSON.parse(savedCommunity));
-      } catch (e) {
-        setSavedCommunityPostIds([]);
-      }
-    }
-  }, []);
+  // 커뮤니티 글 (기존 localStorage 유지)
+  const savedCommunity = localStorage.getItem('savedCommunityPosts');
+  if (savedCommunity) {
+    try { setSavedCommunityPostIds(JSON.parse(savedCommunity)); } catch { setSavedCommunityPostIds([]); }
+  }
+
+  // 사업계획서 → API 조회로 교체
+  if (user_id) {
+    fetch(`http://localhost:5000/api/business-plan/list/${user_id}`)
+      .then(res => res.json())
+      .then(data => setSavedBusinessPlans(Array.isArray(data) ? data : []))
+      .catch(() => setSavedBusinessPlans([]));
+  }
+}, []);
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({
@@ -250,11 +235,20 @@ export default function MyPage() {
     localStorage.setItem('savedPrograms', JSON.stringify(newSaved));
   };
 
-  const handleDeleteBusinessPlan = (planId: string) => {
-    const newPlans = savedBusinessPlans.filter(p => p.id !== planId);
-    setSavedBusinessPlans(newPlans);
-    localStorage.setItem('savedBusinessPlans', JSON.stringify(newPlans));
-  };
+  const handleDeleteBusinessPlan = async (planId: string) => {
+  const user_id = localStorage.getItem('user_id');
+  try {
+    await fetch(`http://localhost:5000/api/business-plan/${planId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id }),
+    });
+    setSavedBusinessPlans(prev => prev.filter(p => p.plan_id !== planId));
+  } catch (err) {
+    console.error('삭제 에러:', err);
+    alert('삭제 중 오류가 발생했습니다.');
+  }
+};
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -382,32 +376,32 @@ const handleDeleteAccount = async () => {
               ) : (
                 <div className="space-y-3">
                   {savedBusinessPlans
-                    .sort((a, b) => b.timestamp - a.timestamp)
+                    .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
                     .map((savedPlan) => (
                       <div
-                        key={savedPlan.id}
+                        key={savedPlan.plan_id}
                         className="p-4 border border-gray-200 rounded-lg hover:border-[#00C9A7] hover:shadow-md transition-all"
                       >
                         <div className="flex items-start justify-between">
                           <div
                             className="flex-1 cursor-pointer"
-                            onClick={() => navigate(`/business-plan?saved=${savedPlan.id}`)}
+                            onClick={() => navigate(`/business-plan?saved=${savedPlan.plan_id}`)}
                           >
                             <h4 className="mb-2 text-gray-900 font-semibold">{savedPlan.title}</h4>
                             <div className="flex items-center gap-4 text-sm text-gray-500">
                               <span className="flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
-                                {formatDate(savedPlan.timestamp)}
+                                {formatDate(new Date(savedPlan.updated_at).getTime())}
                               </span>
                             </div>
-                            {savedPlan.plan.summary && (
+                            {savedPlan.summary && (
                               <p className="mt-2 text-sm text-gray-600 line-clamp-2">
-                                {savedPlan.plan.summary}
+                                {savedPlan.summary}
                               </p>
                             )}
                           </div>
                           <MyPageButton
-                            onClick={() => handleDeleteBusinessPlan(savedPlan.id)}
+                            onClick={() => handleDeleteBusinessPlan(savedPlan.plan_id)}
                             className="p-2 ml-3 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500"
                             title="삭제"
                           > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}

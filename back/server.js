@@ -6,6 +6,7 @@ import pool from './src/db.js'
 import postsRouter from './src/routes/posts.js'
 import announcementsRouter from './src/routes/announcements.js'
 import keywordMapRouter from './src/routes/keywordMap.js'
+import businessPlanRouter from './src/routes/businessPlan.js'
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ app.use('/api/posts', postsRouter); //커뮤니티
 app.use('/oauth', authRouter); // 소셜 로그인
 app.use('/api/announcements', announcementsRouter); // 공고 추천
 app.use('/api/keyword-map', keywordMapRouter); // 키워드맵
+app.use('/api/business-plan', businessPlanRouter); //사업계획서 임시저장
 
 // ==========================================
 // 📊 트렌드 API

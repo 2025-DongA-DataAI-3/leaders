@@ -1,7 +1,19 @@
 import { useState, useEffect } from "react";
-import { User, Heart, Bookmark, Settings, Bell, LogOut, UserX, HelpCircle, X, TrendingUp, FileText, Clock, Save, Trash2, ChevronDown, ThumbsUp, MessageCircle } from "lucide-react";
+import { User, Heart, Bookmark, Settings, Bell, LogOut, UserX, X, TrendingUp, FileText, Clock, Save, Trash2, ChevronDown, MessageCircle } from "lucide-react";
 import { useNavigate } from "react-router";
-import { initialPosts } from "../../app/data/posts";
+// initialPosts 하드코딩 제거 - DB 연동으로 대체
+
+// 커뮤니티 북마크 타입 (DB 응답)
+interface SavedCommunityPost {
+  post_id: string;
+  title: string;
+  content: string;
+  created_at: string;
+  majorcategory: string | null;
+  subcategory: string | null;
+  author: string;
+  comment_count: number;
+}
 import StartupSurvey from "../../app/components/StartupSurvey.tsx";
 
 interface SavedPlan {
@@ -14,59 +26,16 @@ interface SavedPlan {
   updated_at: string;
 }
 
-// 정부지원 공고 데이터
-const allPrograms = [
-  {
-    id: '1',
-    title: '청년창업사관학교 12기',
-    agency: '중소벤처기업부',
-    deadline: '2026-05-25',
-    dday: 18,
-    amount: '최대 1억원',
-    category: 'IT/소프트웨어',
-    url: 'https://www.k-startup.go.kr',
-  },
-  {
-    id: '2',
-    title: '예비창업패키지',
-    agency: '창업진흥원',
-    deadline: '2026-06-10',
-    dday: 34,
-    amount: '최대 1억원',
-    category: '제조/생산',
-    url: 'https://www.k-startup.go.kr',
-  },
-  {
-    id: '3',
-    title: '초기창업패키지',
-    agency: '창업진흥원',
-    deadline: '2026-06-20',
-    dday: 44,
-    amount: '최대 1억원',
-    category: '유통/서비스',
-    url: 'https://www.k-startup.go.kr',
-  },
-  {
-    id: '4',
-    title: '재도전 성공패키지',
-    agency: '중소벤처기업부',
-    deadline: '2026-07-01',
-    dday: 55,
-    amount: '최대 5천만원',
-    category: '바이오/헬스케어',
-    url: 'https://www.k-startup.go.kr',
-  },
-  {
-    id: '5',
-    title: 'K-스타트업 센터 입주',
-    agency: '창업진흥원',
-    deadline: '2026-07-15',
-    dday: 69,
-    amount: '공간 지원',
-    category: '친환경/에너지',
-    url: 'https://www.k-startup.go.kr',
-  },
-];
+// ✅ 공고 타입 - DB 연동용 (하드코딩 allPrograms 배열 제거)
+interface SavedProgram {
+  announcement_id: string;
+  title: string;
+  organization: string;
+  support_field: string;
+  detail_url: string;
+  region: string;
+  end_date: string | null;
+}
 
 // ================= [로컬 컴포넌트 시작: MyPageButton] =================
 interface MyPageButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -142,9 +111,12 @@ export default function MyPage() {
   const navigate = useNavigate();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const userName = localStorage.getItem("userName") || "사용자";
-  const [savedProgramIds, setSavedProgramIds] = useState<string[]>([]);
+
+  // ✅ savedPrograms: DB에서 불러온 공고 전체 데이터
+  const [savedPrograms, setSavedPrograms] = useState<SavedProgram[]>([]);
   const [savedBusinessPlans, setSavedBusinessPlans] = useState<SavedPlan[]>([]);
-  const [savedCommunityPostIds, setSavedCommunityPostIds] = useState<string[]>([]);
+  // ✅ 커뮤니티 북마크 - DB 연동 (하드코딩 initialPosts 제거)
+  const [savedCommunityPosts, setSavedCommunityPosts] = useState<SavedCommunityPost[]>([]);
   const [savedKeywords, setSavedKeywords] = useState<string[]>([]);
   const [showSurvey, setShowSurvey] = useState(false);
 
@@ -162,32 +134,36 @@ export default function MyPage() {
   });
 
   useEffect(() => {
-  const user_id = localStorage.getItem('user_id');
+    const user_id = localStorage.getItem('user_id');
 
-  const saved = localStorage.getItem('savedPrograms');
-  if (saved) {
-    try { setSavedProgramIds(JSON.parse(saved)); } catch { setSavedProgramIds([]); }
-  }
+    // ✅ 커뮤니티 북마크 - localStorage 제거, DB에서 조회
 
-  const savedCommunity = localStorage.getItem('savedCommunityPosts');
-  if (savedCommunity) {
-    try { setSavedCommunityPostIds(JSON.parse(savedCommunity)); } catch { setSavedCommunityPostIds([]); }
-  }
+    if (user_id) {
+      // 사업계획서
+      fetch(`http://localhost:5000/api/business-plan/list/${user_id}`)
+        .then(res => res.json())
+        .then(data => setSavedBusinessPlans(Array.isArray(data) ? data : []))
+        .catch(() => setSavedBusinessPlans([]));
 
-  if (user_id) {
-    // 사업계획서
-    fetch(`http://localhost:5000/api/business-plan/list/${user_id}`)
-      .then(res => res.json())
-      .then(data => setSavedBusinessPlans(Array.isArray(data) ? data : []))
-      .catch(() => setSavedBusinessPlans([]));
+      // 관심 키워드
+      fetch(`http://localhost:5000/api/keywords/${user_id}`)
+        .then(res => res.json())
+        .then(data => setSavedKeywords(Array.isArray(data) ? data.map((d: any) => d.keyword_id) : []))
+        .catch(() => setSavedKeywords([]));
 
-    // 관심 키워드 ← 추가
-    fetch(`http://localhost:5000/api/keywords/${user_id}`)
-      .then(res => res.json())
-      .then(data => setSavedKeywords(Array.isArray(data) ? data.map((d: any) => d.keyword_id) : []))
-      .catch(() => setSavedKeywords([]));
-  }
-}, []);
+      // ✅ 공고 스크랩 목록 - DB에서 상세 정보 포함하여 조회
+      fetch(`http://localhost:5000/api/announcements/bookmarks?user_id=${user_id}`)
+        .then(res => res.json())
+        .then(data => setSavedPrograms(Array.isArray(data) ? data : []))
+        .catch(() => setSavedPrograms([]));
+
+      // ✅ 커뮤니티 북마크 목록 - DB에서 조회
+      fetch(`http://localhost:5000/api/posts/bookmarks/${user_id}`)
+        .then(res => res.json())
+        .then(data => setSavedCommunityPosts(Array.isArray(data) ? data : []))
+        .catch(() => setSavedCommunityPosts([]));
+    }
+  }, []);
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({
@@ -196,40 +172,73 @@ export default function MyPage() {
     }));
   };
 
-  const savedPrograms = allPrograms.filter(program => savedProgramIds.includes(program.id));
-  const savedCommunityPosts = initialPosts.filter(post => savedCommunityPostIds.includes(post.id));
-
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'IT/소프트웨어': return '#8B5CF6';
-      case '제조/생산': return '#3B82F6';
-      case '유통/서비스': return '#F59E0B';
-      case '바이오/헬스케어': return '#10B981';
-      case '친환경/에너지': return '#22C55E';
-      default: return '#00C9A7';
+  // ✅ 커뮤니티 북마크 취소 - DB 연동
+  const handleUnsaveCommunityPost = async (postId: string) => {
+    const user_id = localStorage.getItem('user_id');
+    try {
+      await fetch(`http://localhost:5000/api/posts/${postId}/bookmark`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id }),
+      });
+      setSavedCommunityPosts(prev => prev.filter(p => p.post_id !== postId));
+    } catch (err) {
+      console.error('커뮤니티 북마크 취소 에러:', err);
+      alert('삭제 중 오류가 발생했습니다.');
     }
   };
 
-  const handleUnsaveProgram = (programId: string) => {
-    const newSaved = savedProgramIds.filter(id => id !== programId);
-    setSavedProgramIds(newSaved);
-    localStorage.setItem('savedPrograms', JSON.stringify(newSaved));
+  // D-day 계산 헬퍼
+  const calcDday = (endDate: string | null): number | null => {
+    if (!endDate) return null;
+    const end = new Date(endDate);
+    end.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  };
+
+  // ✅ support_field 기반 카테고리 색상
+  const getCategoryColor = (field: string) => {
+    if (!field) return '#00C9A7';
+    if (field.includes('IT') || field.includes('소프트웨어') || field.includes('AI')) return '#8B5CF6';
+    if (field.includes('제조') || field.includes('생산')) return '#3B82F6';
+    if (field.includes('유통') || field.includes('서비스')) return '#F59E0B';
+    if (field.includes('바이오') || field.includes('헬스')) return '#10B981';
+    if (field.includes('친환경') || field.includes('에너지')) return '#22C55E';
+    return '#00C9A7';
+  };
+
+  // ✅ 공고 스크랩 취소 - DB 연동
+  const handleUnsaveProgram = async (announcementId: string) => {
+    const user_id = localStorage.getItem('user_id');
+    try {
+      await fetch('http://localhost:5000/api/announcements/bookmarks', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id, announcement_id: announcementId }),
+      });
+      setSavedPrograms(prev => prev.filter(p => p.announcement_id !== announcementId));
+    } catch (err) {
+      console.error('스크랩 취소 에러:', err);
+      alert('삭제 중 오류가 발생했습니다.');
+    }
   };
 
   const handleDeleteBusinessPlan = async (planId: string) => {
-  const user_id = localStorage.getItem('user_id');
-  try {
-    await fetch(`http://localhost:5000/api/business-plan/${planId}`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id }),
-    });
-    setSavedBusinessPlans(prev => prev.filter(p => p.plan_id !== planId));
-  } catch (err) {
-    console.error('삭제 에러:', err);
-    alert('삭제 중 오류가 발생했습니다.');
-  }
-};
+    const user_id = localStorage.getItem('user_id');
+    try {
+      await fetch(`http://localhost:5000/api/business-plan/${planId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id }),
+      });
+      setSavedBusinessPlans(prev => prev.filter(p => p.plan_id !== planId));
+    } catch (err) {
+      console.error('삭제 에러:', err);
+      alert('삭제 중 오류가 발생했습니다.');
+    }
+  };
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -249,42 +258,41 @@ export default function MyPage() {
     navigate("/login");
   };
 
-const handleDeleteAccount = async () => {
-  try {
-    const user_id = localStorage.getItem("user_id");
-
-    const res = await fetch('http://localhost:5000/api/auth/delete', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id }),
-    });
-
-    const data = await res.json();
-    if (data.success) {
-      localStorage.clear();
-      navigate("/login");
-      setShowDeleteConfirm(false);
-    } else {
-      alert('회원탈퇴 실패: ' + data.message);
+  const handleDeleteAccount = async () => {
+    try {
+      const user_id = localStorage.getItem("user_id");
+      const res = await fetch('http://localhost:5000/api/auth/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        localStorage.clear();
+        navigate("/login");
+        setShowDeleteConfirm(false);
+      } else {
+        alert('회원탈퇴 실패: ' + data.message);
+      }
+    } catch (err) {
+      console.error('회원탈퇴 실패:', err);
+      alert('회원탈퇴 중 오류가 발생했습니다.');
     }
-  } catch (err) {
-    console.error('회원탈퇴 실패:', err);
-    alert('회원탈퇴 중 오류가 발생했습니다.');
-  }
-};
-const handleDeleteKeyword = async (keyword: string) => {
-  const user_id = localStorage.getItem('user_id');
-  try {
-    await fetch('http://localhost:5000/api/keywords/delete', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id, keyword }),
-    });
-    setSavedKeywords(prev => prev.filter(k => k !== keyword));
-  } catch (err) {
-    console.error('키워드 삭제 에러:', err);
-  }
-};
+  };
+
+  const handleDeleteKeyword = async (keyword: string) => {
+    const user_id = localStorage.getItem('user_id');
+    try {
+      await fetch('http://localhost:5000/api/keywords/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id, keyword }),
+      });
+      setSavedKeywords(prev => prev.filter(k => k !== keyword));
+    } catch (err) {
+      console.error('키워드 삭제 에러:', err);
+    }
+  };
 
   const handleResetOnboarding = () => {
     localStorage.removeItem("hasSeenOnboarding");
@@ -323,6 +331,7 @@ const handleDeleteKeyword = async (keyword: string) => {
               <div className="text-sm text-gray-600">관심 키워드</div>
             </div>
             <div className="bg-[#E0F7F3] rounded-lg p-4 text-center">
+              {/* ✅ savedPrograms.length 사용 (하드코딩 배열 제거로 자동 반영) */}
               <div className="text-3xl text-[#00C9A7] mb-1 font-bold">{savedPrograms.length + savedCommunityPosts.length}</div>
               <div className="text-sm text-gray-600">저장한 콘텐츠</div>
             </div>
@@ -335,7 +344,7 @@ const handleDeleteKeyword = async (keyword: string) => {
             data-tutorial="saved-bizplan"
             onClick={() => toggleSection('businessPlans')}
             className="w-full p-8 flex items-center justify-between hover:bg-gray-50 transition-colors"
-          > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
+          >
             <div className="flex items-center gap-2">
               <Save className="w-5 h-5 text-[#00C9A7]" />
               <h2 className="text-gray-900 text-xl font-bold">임시 저장한 사업계획서</h2>
@@ -353,7 +362,7 @@ const handleDeleteKeyword = async (keyword: string) => {
                 <MyPageButton
                   onClick={() => navigate('/business-plan')}
                   className="px-4 py-2 text-[#00C9A7] hover:bg-[#E0F7F3] rounded-lg text-sm"
-                > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
+                >
                   새로 작성
                 </MyPageButton>
               </div>
@@ -364,7 +373,7 @@ const handleDeleteKeyword = async (keyword: string) => {
                   <MyPageButton
                     onClick={() => navigate('/business-plan')}
                     className="mt-4 px-4 py-2 bg-[#00C9A7] text-white rounded-lg hover:bg-[#00A88E] text-sm"
-                  > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
+                  >
                     사업계획서 작성하기
                   </MyPageButton>
                 </div>
@@ -399,7 +408,7 @@ const handleDeleteKeyword = async (keyword: string) => {
                             onClick={() => handleDeleteBusinessPlan(savedPlan.plan_id)}
                             className="p-2 ml-3 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-500"
                             title="삭제"
-                          > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
+                          >
                             <Trash2 className="w-4 h-4" />
                           </MyPageButton>
                         </div>
@@ -417,7 +426,7 @@ const handleDeleteKeyword = async (keyword: string) => {
             data-tutorial="interest-keywords"
             onClick={() => toggleSection('keywords')}
             className="w-full p-8 flex items-center justify-between hover:bg-gray-50 transition-colors"
-          > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
+          >
             <div className="flex items-center gap-2">
               <Heart className="w-5 h-5 text-[#00C9A7]" />
               <h2 className="text-gray-900 text-xl font-bold">관심 키워드</h2>
@@ -430,27 +439,27 @@ const handleDeleteKeyword = async (keyword: string) => {
             />
           </MyPageButton>
           {expandedSections.keywords && (
-  <div className="px-8 pb-8">
-    <div className="flex flex-wrap gap-3">
-      {savedKeywords.length === 0 ? (
-        <p className="text-sm text-gray-400">저장한 관심 키워드가 없습니다.</p>
-      ) : (
-        savedKeywords.map((keyword, idx) => (
-          <div key={idx}
-            className="flex items-center gap-1.5 px-4 py-2 bg-[#E0F7F3] text-[#00C9A7] rounded-full border border-[#00C9A7]/30 text-sm">
-            {keyword}
-            <button
-              onClick={() => handleDeleteKeyword(keyword)}
-              className="ml-1 hover:text-red-500 transition-colors"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          </div>
-        ))
-      )}
-    </div>
-  </div>
-)}
+            <div className="px-8 pb-8">
+              <div className="flex flex-wrap gap-3">
+                {savedKeywords.length === 0 ? (
+                  <p className="text-sm text-gray-400">저장한 관심 키워드가 없습니다.</p>
+                ) : (
+                  savedKeywords.map((keyword, idx) => (
+                    <div key={idx}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-[#E0F7F3] text-[#00C9A7] rounded-full border border-[#00C9A7]/30 text-sm">
+                      {keyword}
+                      <button
+                        onClick={() => handleDeleteKeyword(keyword)}
+                        className="ml-1 hover:text-red-500 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 3. 저장 (2단계 아코디언) */}
@@ -459,7 +468,7 @@ const handleDeleteKeyword = async (keyword: string) => {
             data-tutorial="mypage-saved"
             onClick={() => toggleSection('saved')}
             className="w-full p-8 flex items-center justify-between hover:bg-gray-50 transition-colors"
-          > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
+          >
             <div className="flex items-center gap-2">
               <Bookmark className="w-5 h-5 text-[#00C9A7]" />
               <h2 className="text-gray-900 text-xl font-bold">저장</h2>
@@ -480,7 +489,7 @@ const handleDeleteKeyword = async (keyword: string) => {
                 <MyPageButton
                   onClick={() => toggleSection('savedPrograms')}
                   className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
+                >
                   <div className="flex items-center gap-2">
                     <FileText className="w-4 h-4 text-[#00C9A7]" />
                     <h3 className="text-gray-900 text-sm font-semibold">저장한 공고</h3>
@@ -500,58 +509,75 @@ const handleDeleteKeyword = async (keyword: string) => {
                       </div>
                     ) : (
                       <div className="space-y-3">
-                        {savedPrograms.map((program) => (
-                          <div
-                            key={program.id}
-                            className="p-3 border border-gray-200 rounded-lg hover:border-[#00C9A7] hover:shadow-md transition-all"
-                          >
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <h4 className="text-sm font-medium text-gray-900">{program.title}</h4>
-                                  <span
-                                    className="px-2 py-0.5 rounded text-white text-xs font-semibold"
-                                    style={{ background: getCategoryColor(program.category) }}
-                                  >
-                                    {program.category}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-3 text-xs text-gray-500">
-                                  <span>{program.agency}</span>
-                                  <span>•</span>
-                                  <span>D-{program.dday}</span>
-                                </div>
-                              </div>
-                              <MyPageButton
-                                onClick={() => handleUnsaveProgram(program.id)}
-                                className="p-1.5 rounded-lg hover:bg-red-50 hover:text-red-500"
-                                title="스크랩 취소"
-                              > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
-                                <Bookmark className="w-3.5 h-3.5" fill="#00C9A7" />
-                              </MyPageButton>
-                            </div>
-                            <a
-                              href={program.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-3 py-1.5 rounded-lg text-white whitespace-nowrap text-xs inline-block font-medium hover:opacity-90 transition-opacity"
-                              style={{ background: '#00C9A7' }}
+                        {savedPrograms.map((program) => {
+                          const dday = calcDday(program.end_date);
+                          const ddayLabel = dday === null
+                            ? '-'
+                            : dday < 0
+                            ? '마감'
+                            : dday === 0
+                            ? 'D-day'
+                            : `D-${dday}`;
+                          const ddayColor = dday !== null && dday <= 3 && dday >= 0
+                            ? 'text-red-500'
+                            : 'text-gray-500';
+
+                          return (
+                            <div
+                              key={program.announcement_id}
+                              className="p-3 border border-gray-200 rounded-lg hover:border-[#00C9A7] hover:shadow-md transition-all"
                             >
-                              지원하기
-                            </a>
-                          </div>
-                        ))}
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <h4 className="text-sm font-medium text-gray-900">{program.title}</h4>
+                                    {program.support_field && (
+                                      <span
+                                        className="px-2 py-0.5 rounded text-white text-xs font-semibold"
+                                        style={{ background: getCategoryColor(program.support_field) }}
+                                      >
+                                        {program.support_field}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className={`flex items-center gap-3 text-xs ${ddayColor}`}>
+                                    <span>{program.organization}</span>
+                                    <span>•</span>
+                                    <span className="font-semibold">{ddayLabel}</span>
+                                  </div>
+                                </div>
+                                <MyPageButton
+                                  onClick={() => handleUnsaveProgram(program.announcement_id)}
+                                  className="p-1.5 rounded-lg hover:bg-red-50 hover:text-red-500"
+                                  title="스크랩 취소"
+                                >
+                                  <Bookmark className="w-3.5 h-3.5" fill="#00C9A7" />
+                                </MyPageButton>
+                              </div>
+                              <a
+                                href={program.detail_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1.5 rounded-lg text-white whitespace-nowrap text-xs inline-block font-medium hover:opacity-90 transition-opacity"
+                                style={{ background: '#00C9A7' }}
+                              >
+                                지원하기
+                              </a>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
                 )}
               </div>
+
               {/* 저장한 커뮤니티 글 */}
               <div className="border border-gray-200 rounded-lg overflow-hidden">
                 <MyPageButton
                   onClick={() => toggleSection('savedPosts')}
                   className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
+                >
                   <div className="flex items-center gap-2">
                     <MessageCircle className="w-4 h-4 text-[#00C9A7]" />
                     <h3 className="text-gray-900 text-sm font-semibold">저장한 커뮤니티 글</h3>
@@ -573,26 +599,38 @@ const handleDeleteKeyword = async (keyword: string) => {
                       <div className="space-y-3">
                         {savedCommunityPosts.map((post) => (
                           <div
-                            key={post.id}
-                            onClick={() => navigate(`/community-post/${post.id}`)}
-                            className="p-3 border border-gray-200 rounded-lg hover:border-[#00C9A7] hover:shadow-md transition-all cursor-pointer"
+                            key={post.post_id}
+                            className="p-3 border border-gray-200 rounded-lg hover:border-[#00C9A7] hover:shadow-md transition-all"
                           >
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: '#E0F7F3', color: '#00C9A7' }}>
-                                {post.category}
-                              </span>
-                            </div>
-                            <h4 className="mb-1 text-sm font-medium text-gray-900">{post.title}</h4>
-                            <p className="text-xs text-gray-600 mb-2 line-clamp-1">{post.content}</p>
-                            <div className="flex items-center gap-3 text-xs text-gray-500">
-                              <span className="flex items-center gap-1">
-                                <ThumbsUp className="w-3 h-3" />
-                                {post.likes}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <MessageCircle className="w-3 h-3" />
-                                {post.commentList.length}
-                              </span>
+                            <div className="flex items-start justify-between">
+                              <div
+                                className="flex-1 cursor-pointer"
+                                onClick={() => navigate(`/community-post/${post.post_id}`)}
+                              >
+                                <div className="flex items-center gap-2 mb-1">
+                                  {post.subcategory && (
+                                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: '#E0F7F3', color: '#00C9A7' }}>
+                                      {post.subcategory}
+                                    </span>
+                                  )}
+                                </div>
+                                <h4 className="mb-1 text-sm font-medium text-gray-900">{post.title}</h4>
+                                <p className="text-xs text-gray-600 mb-2 line-clamp-1">{post.content}</p>
+                                <div className="flex items-center gap-3 text-xs text-gray-500">
+                                  <span>{post.author}</span>
+                                  <span className="flex items-center gap-1">
+                                    <MessageCircle className="w-3 h-3" />
+                                    {post.comment_count ?? 0}
+                                  </span>
+                                </div>
+                              </div>
+                              <MyPageButton
+                                onClick={() => handleUnsaveCommunityPost(post.post_id)}
+                                className="p-1.5 ml-2 rounded-lg hover:bg-red-50 hover:text-red-500 flex-shrink-0"
+                                title="북마크 취소"
+                              >
+                                <Bookmark className="w-3.5 h-3.5" fill="#00C9A7" />
+                              </MyPageButton>
                             </div>
                           </div>
                         ))}
@@ -611,7 +649,7 @@ const handleDeleteKeyword = async (keyword: string) => {
             data-tutorial="mypage-settings"
             onClick={() => toggleSection('settings')}
             className="w-full p-8 flex items-center justify-between hover:bg-gray-50 transition-colors"
-          > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
+          >
             <div className="flex items-center gap-2">
               <Settings className="w-5 h-5 text-[#00C9A7]" />
               <h2 className="text-gray-900 text-xl font-bold">설정</h2>
@@ -629,7 +667,7 @@ const handleDeleteKeyword = async (keyword: string) => {
                 <MyPageButton
                   onClick={() => toggleSection('notifications')}
                   className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
+                >
                   <div className="flex items-center gap-2">
                     <Bell className="w-4 h-4 text-[#00C9A7]" />
                     <h3 className="text-gray-900 text-sm font-semibold">알림 설정</h3>
@@ -708,7 +746,7 @@ const handleDeleteKeyword = async (keyword: string) => {
                 <MyPageButton
                   onClick={() => toggleSection('accountManagement')}
                   className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
+                >
                   <div className="flex items-center gap-2">
                     <User className="w-4 h-4 text-[#00C9A7]" />
                     <h3 className="text-gray-900 text-sm font-semibold">계정 관리</h3>
@@ -732,12 +770,11 @@ const handleDeleteKeyword = async (keyword: string) => {
                       <MyPageButton
                         onClick={() => navigate('/profile-edit')}
                         className="px-3 py-1.5 text-xs text-[#00C9A7] hover:bg-[#E0F7F3] rounded-lg"
-                      > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
+                      >
                         수정
                       </MyPageButton>
                     </div>
 
-                    
                     <div className="p-3 border border-gray-200 rounded-lg flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Settings className="w-4 h-4 text-gray-600" />
@@ -757,7 +794,7 @@ const handleDeleteKeyword = async (keyword: string) => {
                     <MyPageButton
                       onClick={handleLogout}
                       className="w-full p-3 border border-gray-200 rounded-lg hover:border-[#00C9A7] hover:bg-[#E0F7F3] flex items-center gap-2"
-                    > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
+                    >
                       <LogOut className="w-4 h-4 text-gray-600" />
                       <div className="text-left">
                         <div className="text-xs font-medium text-gray-900">로그아웃</div>
@@ -768,7 +805,7 @@ const handleDeleteKeyword = async (keyword: string) => {
                     <MyPageButton
                       onClick={() => setShowDeleteConfirm(true)}
                       className="w-full p-3 border border-red-200 rounded-lg hover:border-red-400 hover:bg-red-50 flex items-center gap-2"
-                    > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
+                    >
                       <UserX className="w-4 h-4 text-red-600" />
                       <div className="text-left">
                         <div className="text-xs font-medium text-red-600">회원 탈퇴</div>
@@ -781,12 +818,12 @@ const handleDeleteKeyword = async (keyword: string) => {
             </div>
           )}
         </div>
-        {/* ★ 창업 성향 진단 수정 모달 */}
+
+        {/* 창업 성향 진단 수정 모달 */}
         {showSurvey && (
           <StartupSurvey onComplete={() => setShowSurvey(false)} />
         )}
-        
-        {/* ★ 기존 인라인 모달 마크업 구역 전체를 로컬 컴포넌트 MyPageDialog로 치환함 */}
+
         <MyPageDialog
           isOpen={showDeleteConfirm}
           onClose={() => setShowDeleteConfirm(false)}

@@ -129,18 +129,26 @@ router.delete('/bookmarks', async (req, res) => {
   }
 });
 
-// 스크랩 목록 조회
+// ✅ 스크랩 목록 조회 - 공고 상세 정보 JOIN하여 반환 (마이페이지 연동)
 router.get('/bookmarks', async (req, res) => {
   try {
     const { user_id } = req.query;
     if (!user_id) {
       return res.status(400).json({ message: 'user_id가 필요합니다.' });
     }
-    const [rows] = await pool.query(
-      'SELECT announcement_id FROM user_bookmarks WHERE user_id = ?',
-      [user_id]
-    );
-    res.json(rows.map(r => r.announcement_id));
+
+    const [rows] = await pool.query(`
+      SELECT fa.announcement_id, fa.title, fa.organization,
+             fa.support_field, fa.detail_url, fa.region,
+             ra.end_date
+      FROM user_bookmarks ub
+      JOIN filtered_announcements fa ON ub.announcement_id = fa.announcement_id
+      LEFT JOIN raw_announcements ra ON fa.raw_announcement_id = ra.raw_announcement_id
+      WHERE ub.user_id = ?
+      ORDER BY ub.created_at DESC
+    `, [user_id]);
+
+    res.json(rows);
   } catch (err) {
     console.error('스크랩 목록 조회 에러:', err);
     res.status(500).json({ message: err.message });

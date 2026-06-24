@@ -429,7 +429,8 @@ export default function Root() {
   const [showCustomerService, setShowCustomerService] = useState(false);
   const [closingPanel, setClosingPanel] = useState<"chatbot" | "cs" | null>(null); 
   const [isChatExpanded, setIsChatExpanded] = useState(false);
-  
+  const [showTutorialConfirm, setShowTutorialConfirm] = useState(false);
+
   // 알림 동적 상태 배열 (백엔드 API 연동)
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const isLoggedIn = localStorage.getItem("isLoggedIn");
@@ -530,16 +531,14 @@ export default function Root() {
     setShowSurvey(false);
   };
 
-   /* ------------------------------------------------------------------------
-   🎓 [온보딩 → 튜토리얼 연결] 시작하기 버튼 클릭 시 튜토리얼 강제 실행 이벤트 수신기
+  /* ------------------------------------------------------------------------
+   🎓 [온보딩 → 튜토리얼 연결] 시작하기 버튼 클릭 시 확인 팝업 표시
    - Onboarding.tsx에서 window.dispatchEvent(new CustomEvent("startTutorial")) 발송 시
-   - 이 리스너가 캐치하여 Tutorial(Onboarding) 컴포넌트를 화면에 마운트합니다.
-   - 페이지 이동(/keyword-map) 후 FloatingButton 마운트 완료 시점을 기다리기 위해
-     Onboarding.tsx에서 setTimeout 300ms 딜레이 후 이벤트를 발송합니다.
+   - 바로 튜토리얼을 띄우지 않고 시작하기/건너뛰기 확인 팝업을 먼저 표시합니다.
    ------------------------------------------------------------------------ */
   useEffect(() => {
     const handleStartTutorial = () => {
-      setShowOnboarding(true);
+      setShowTutorialConfirm(true);
     };
     window.addEventListener("startTutorial", handleStartTutorial);
     return () => window.removeEventListener("startTutorial", handleStartTutorial);
@@ -601,7 +600,41 @@ export default function Root() {
   if (!isLoggedIn) return null;
 
   return (
+      
     <>
+      {/* 튜토리얼 시작 확인 팝업 */}
+      {showTutorialConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200]">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
+            <div className="w-16 h-16 rounded-full bg-[#E0F7F3] flex items-center justify-center mx-auto mb-4">
+              <GraduationCap className="w-8 h-8 text-[#00C9A7]" />
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">TrendPilot 튜토리얼</h3>
+            <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+              주요 기능을 단계별로 안내해드립니다.<br />지금 시작하시겠어요?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowTutorialConfirm(false)}
+                className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors font-medium"
+              >
+                건너뛰기
+              </button>
+              <button
+                onClick={() => {
+                  setShowTutorialConfirm(false);
+                  setShowOnboarding(true);
+                }}
+                className="flex-1 px-4 py-3 rounded-xl text-white font-medium hover:opacity-90 transition-opacity"
+                style={{ background: "#00C9A7" }}
+              >
+                시작하기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 조건부 모달 바인딩 계층 */}
       {showOnboarding && <Onboarding onComplete={handleOnboardingComplete}  navigate={navigate} />}
       {showSurvey && <StartupSurvey onComplete={handleSurveyComplete} />}
@@ -688,6 +721,7 @@ export default function Root() {
             <>
               {/* 튜토리얼 초기화 및 강제 재적용 버튼 */}
               <RootIconButton
+                data-tutorial="floating-tutorial-btn"
                 onClick={() => {
                   localStorage.removeItem("hasSeenOnboarding");
                   localStorage.removeItem("hasCompletedSurvey");
@@ -703,6 +737,7 @@ export default function Root() {
 
               {/* 고객센터 독립 모듈 인터랙션 트리거 */}
               <RootIconButton
+                data-tutorial="floating-cs-btn"
                 onClick={() => setShowCustomerService(true)}
                 className="flex items-center gap-2 px-5 py-3 rounded-full text-white shadow-2xl hover:shadow-3xl transition-all hover:scale-105 w-36 justify-center"
                 style={{ background: "linear-gradient(to right, #6366F1, #4F46E5)" }}
@@ -713,6 +748,7 @@ export default function Root() {
 
               {/* AI 챗봇 독립 모듈 인터랙션 트리거 */}
               <RootIconButton
+                data-tutorial="floating-chatbot-btn"
                 onClick={() => setShowChatbot(true)}
                 className="flex items-center gap-2 px-5 py-3 rounded-full text-white shadow-2xl hover:shadow-3xl transition-all hover:scale-105 w-36 justify-center"
                 style={{ background: "linear-gradient(to right, #00C9A7, #00A88E)" }}

@@ -433,20 +433,23 @@ export default function KeywordMap() {
                   );
                 })}
               </div>
-              {viewMode === "ranking" && (
-                <div className="flex justify-center px-6 py-5 border-t border-gray-50 flex-shrink-0">
-                  <button onClick={() => setViewMode("bubbles")}
-                    data-tutorial="bubble-map-btn"
-                    className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-                    style={{ background: "#00C9A7" }}>
-                    <Zap className="w-4 h-4" />
-                    버블맵으로 보기
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
+                {viewMode === "ranking" && (
+                  <div className="flex justify-center px-6 py-5 border-t border-gray-50 flex-shrink-0">
+                    <button
+                      onClick={() => setViewMode("bubbles")}
+                      data-tutorial="bubble-map-btn"
+                      className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                      style={{ background: "#00C9A7" }}
+                    >
+                      <Zap className="w-4 h-4" />
+                      버블맵으로 보기
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          
 
           {/* 버블맵 */}
           {viewMode === "bubbles" && (
@@ -468,6 +471,8 @@ export default function KeywordMap() {
                     style={{
                       background: "linear-gradient(135deg, #F8FFFE 0%, #F0F9FF 100%)",
                       height: selectedBubble ? "300px" : "750px",
+                      position: "relative",
+                      zIndex: 1,
                     }}>
                   <svg ref={svgRef} className="w-full h-full" />
 
@@ -500,51 +505,44 @@ export default function KeywordMap() {
                           <h3 className="text-lg font-bold text-gray-900">{selectedData.keyword}</h3>
                         </div>
                         <button
-  onClick={() => {
-  const user_id = localStorage.getItem('user_id');
-  if (!user_id) {
-    alert('로그인이 필요합니다.');
-    return;
-  }
-  fetch('http://localhost:5000/api/keywords/save', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ user_id, keyword: selectedData.keyword }),
-  })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        alert(`'${selectedData.keyword}' 키워드가 저장되었습니다.`);
-      } else {
-        alert(data.message);
-      }
-    })
-    .catch(() => alert('저장 중 오류가 발생했습니다.'));
-}}
-  className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-  style={{ background: "#00C9A7" }}>
-  <Heart className="w-3.5 h-3.5" />
-  키워드 저장
-</button>
-                      </div> 
-                      <button onClick={() => {
-                        setSelectedBubble(null);
-                        // SVG 노드 opacity 전체 초기화
-                        if (svgRef.current) {
-                          d3.select(svgRef.current)
-                            .selectAll<SVGGElement, unknown>("g g g")
-                            .style("opacity", 1);
-                          d3.select(svgRef.current)
-                            .selectAll("line")
-                            .style("opacity", 0.6);
-                        }
-                      }}
-                        className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+                          onClick={() => {
+                            const user_id = localStorage.getItem('user_id');
+                            if (!user_id) { alert('로그인이 필요합니다.'); return; }
+                            fetch('http://localhost:5000/api/keywords/save', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ user_id, keyword: selectedData.keyword }),
+                            })
+                              .then(res => res.json())
+                              .then(data => {
+                                if (data.success) alert(`'${selectedData.keyword}' 키워드가 저장되었습니다.`);
+                                else alert(data.message);
+                              })
+                              .catch(() => alert('저장 중 오류가 발생했습니다.'));
+                          }}
+                          className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold text-white hover:opacity-90 transition-opacity"
+                          style={{ background: "#00C9A7" }}
+                        >
+                          <Heart className="w-3.5 h-3.5" />
+                          키워드 저장
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedBubble(null);
+                          if (svgRef.current) {
+                            d3.select(svgRef.current).selectAll<SVGGElement, unknown>("g g g").style("opacity", 1);
+                            d3.select(svgRef.current).selectAll("line").style("opacity", 0.6);
+                          }
+                        }}
+                        className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors"
+                      >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       </button>
                     </div>
+
                     <div className="flex flex-col gap-2.5">
                       <SectionCard meta={SECTION_META[0]}>
                         <p className="text-sm text-gray-600 leading-relaxed">{selectedData.reason}</p>
@@ -606,18 +604,23 @@ export default function KeywordMap() {
                           </div>
                         ) : <p className="text-sm text-gray-400">관련 뉴스 없음</p>}
                       </SectionCard>
-                      <button
+
+                      {/* 사업계획서 버튼 — 작고 가운데 */}
+                      <div className="flex justify-center mt-1">
+                        <button
                           onClick={() => navigate("/business-plan", {
-                          state: {
-                            keyword: selectedData.keyword,
-                            marketAnalysis: marketCache[selectedData.keyword] || selectedData.marketAnalysis || "",
-                          },
-                        })}
-                        className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-white font-semibold hover:opacity-90 transition-opacity mt-1"
-                        style={{ background: "#00C9A7", fontSize: '14px' }}>
-                        <Zap className="w-4 h-4" />
-                        이 키워드로 사업계획서 쓰기
-                      </button>
+                            state: {
+                              keyword: selectedData.keyword,
+                              marketAnalysis: marketCache[selectedData.keyword] || selectedData.marketAnalysis || "",
+                            },
+                          })}
+                          className="flex items-center justify-center gap-2 px-6 py-2 rounded-xl text-white font-semibold hover:opacity-90 transition-opacity"
+                          style={{ background: "#00C9A7", fontSize: '13px' }}
+                        >
+                          <Zap className="w-3.5 h-3.5" />
+                          이 키워드로 사업계획서 쓰기
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}

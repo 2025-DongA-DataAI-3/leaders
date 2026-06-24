@@ -363,22 +363,35 @@ export default function Onboarding() {
             트렌드 분석부터 정부 지원 매칭까지,<br />창업의 빈칸을 채워드립니다
           </p>
           <button
-              onClick={() => { /* 기존 로직 그대로 */ }}
-              style={{
-                padding:"12px 32px", borderRadius:24, border:"none",
-                background:"#00C9A7", color:"white", fontSize:16, fontWeight:600,
-                cursor:"pointer", boxShadow:"0 4px 16px rgba(0,201,167,0.35)",
-                display:"inline-flex", alignItems:"center", gap:8,
-              }}
-            >
-          TrendPilot 시작하기
-          <span style={{
-            width:24, height:24, borderRadius:"50%",
-            background:"rgba(255,255,255,0.25)",
-            display:"inline-flex", alignItems:"center", justifyContent:"center",
-            fontSize:13,
-          }}>→</span>
-        </button>
+            onClick={() => {
+              const runTutorial = localStorage.getItem("runTutorialTrigger");
+              if (runTutorial === "true") {
+                localStorage.removeItem("runTutorialTrigger");
+                localStorage.setItem("hasSeenOnboarding", "true");
+                navigate("/keyword-map");
+                setTimeout(() => {
+                  window.dispatchEvent(new CustomEvent("startTutorial"));
+                }, 300);
+              } else {
+                const userId = localStorage.getItem("user_id");
+                navigate(userId ? "/keyword-map" : "/login");
+              }
+            }}
+            style={{
+              padding:"12px 32px", borderRadius:24, border:"none",
+              background:"#00C9A7", color:"white", fontSize:16, fontWeight:600,
+              cursor:"pointer", boxShadow:"0 4px 16px rgba(0,201,167,0.35)",
+              display:"inline-flex", alignItems:"center", gap:8,
+            }}
+          >
+            TrendPilot 시작하기
+            <span style={{
+              width:24, height:24, borderRadius:"50%",
+              background:"rgba(255,255,255,0.25)",
+              display:"inline-flex", alignItems:"center", justifyContent:"center",
+              fontSize:13,
+            }}>→</span>
+          </button>
         </div>
 
         {/* 캐러셀 스테이지 */}

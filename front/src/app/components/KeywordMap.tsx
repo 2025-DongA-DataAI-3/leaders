@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { TrendingUp, ChevronRight, ArrowLeft, Zap, ExternalLink, Newspaper, Heart } from "lucide-react";
+import { TrendingUp,  TrendingDown, ChevronRight, ArrowLeft, Zap, ExternalLink, Newspaper, Heart } from "lucide-react";
 import * as d3 from "d3";
 import { useNavigate } from "react-router-dom";
 
@@ -398,6 +398,9 @@ export default function KeywordMap() {
               <div className="px-6 py-5 border-b border-gray-50 flex-shrink-0">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Trending Now</p>
                 <h2 className="text-lg font-bold text-gray-900">트렌드 TOP 10</h2>
+                <span className="text-xs text-gray-400 text-center leading-relaxed">
+                  "검색관심도 · 검색증가율 · 뉴스근거량 · 문서관련도 · 최신성"   5가지 지표를 종합한 트렌드 점수 기준으로 선정됩니다.
+                </span>
               </div>
               <div className="divide-y divide-gray-50 flex-1 flex flex-col">
                 {top10Trends.map(item => {
@@ -426,16 +429,33 @@ export default function KeywordMap() {
                         </span>
                       </div>
                       <div className="flex items-center gap-0.5 flex-shrink-0">
-                        <TrendingUp className="w-3 h-3 text-red-400" />
-                        <span className={`font-bold text-red-400 ${isTop3 ? "text-base" : "text-sm"}`}>{item.change}</span>
-                      </div>
+                      {(() => {
+                        const isPositive = item.change.startsWith("+");
+                        const isNeutral  = item.change === "-";
+                        return (
+                          <>
+                            {isNeutral
+                              ? <span className="text-xs text-gray-300">-</span>
+                              : isPositive
+                                ? <TrendingUp   className={`w-3 h-3 ${isTop3 ? "text-red-400" : "text-red-300"}`} />
+                                : <TrendingDown className={`w-3 h-3 ${isTop3 ? "text-blue-400" : "text-blue-300"}`} />
+                            }
+                            <span className={`font-bold ${isTop3 ? "text-base" : "text-sm"} ${
+                              isNeutral ? "text-gray-300" : isPositive ? "text-red-400" : "text-blue-400"
+                            }`}>
+                              {item.change}
+                            </span>
+                          </>
+                        );
+                      })()}
+                    </div>
                     </div>
                   );
                 })}
               </div>
                 {viewMode === "ranking" && (
                   <div className="flex justify-center px-6 py-5 border-t border-gray-50 flex-shrink-0">
-                    <button
+                      <button
                       onClick={() => setViewMode("bubbles")}
                       data-tutorial="bubble-map-btn"
                       className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition-opacity"

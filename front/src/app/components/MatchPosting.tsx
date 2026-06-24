@@ -1,5 +1,6 @@
 import { useState, useEffect, ReactNode } from 'react';
 import { Calendar as CalendarIcon, List, Bookmark, Clock, X, ChevronLeft, ChevronRight, Banknote, GraduationCap, Building2, HelpCircle } from 'lucide-react';
+import StartupSurvey from "./StartupSurvey";
 
 type SupportType = '창업자금 지원' | '창업교육지원' | '창업공간지원' | '기타';
 
@@ -194,6 +195,7 @@ export default function MatchPosting() {
   const [currentPage, setCurrentPage]           = useState(1);
   const [showMyPosts, setShowMyPosts]           = useState(false);
   const [inputKeyword, setInputKeyword]   = useState('');
+  const [showSurvey, setShowSurvey] = useState(false);
 
   // 스크랩 목록 로드 (localStorage 대신 DB)
 useEffect(() => {
@@ -370,7 +372,11 @@ useEffect(() => {
             </div>
 
             {/* 오른쪽 절반: 내 맞춤 공고 보기 버튼 */}
-            <div className="flex-1 flex justify-end items-center">
+            <div className="flex-1 flex justify-end items-center gap-2">
+               {/* ✅ 내 데이터 입력 버튼 추가 */}
+              <Button variant="primary" onClick={() => setShowSurvey(true)}>
+                  ✏️ 내 데이터 입력
+              </Button>
               <button
                 data-tutorial="my-match-btn"
                 onClick={() => setShowMyPosts(prev => !prev)}
@@ -540,7 +546,7 @@ useEffect(() => {
                               </span>
                               <Badge variant={isExpired ? 'default' : (program.dday !== null && program.dday <= 20 ? 'danger' : 'success')}
                                 className={isExpired ? 'bg-gray-100 text-gray-500' : ''}>
-                                {program.dday !== null ? (isExpired ? '마감' : `D-${program.dday}`) : '상시'}
+                                {program.dday !== null ? (isExpired ? '마감' : program.dday === 0 ? 'D-Day' : `D-${program.dday}`) : '상시'}
                               </Badge>
                               {program.region && (
                                 <Badge className="bg-gray-100 text-gray-600">{program.region}</Badge>
@@ -635,7 +641,7 @@ useEffect(() => {
                         <div className="truncate">
                           <div className="font-medium text-sm text-gray-900 truncate">{program.title}</div>
                           <div className="text-xs text-gray-500">
-                             마감: {program.deadline}{program.dday !== null ? (program.dday < 0 ? ' (마감)' : ` (D-${program.dday})`) : ' (상시)'}
+                             마감: {program.deadline}{program.dday !== null ? (program.dday < 0 ? ' (마감)' : program.dday === 0 ? ' (D-Day)' : ` (D-${program.dday})`) : ' (상시)'}
                           </div>
                         </div>
                       </div>
@@ -650,6 +656,10 @@ useEffect(() => {
           </Card>
         )}
       </div>
+      {/* ✅ 설문 모달 */}
+      {showSurvey && (
+        <StartupSurvey onComplete={() => setShowSurvey(false)} />
+      )}
     </div>
   );
 }

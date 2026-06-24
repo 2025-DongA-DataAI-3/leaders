@@ -140,11 +140,11 @@ export default function KeywordMap() {
       .then(res => res.json())
       .then(data => {
         const seedItems = data.seed_nodes.map((s: any, i: number) => ({
-          ...s,
-          frequency:     1400 - i * 70,
-          growth_rate:   120  - i * 5,
-          ranking_score: 0,
-        }));
+  ...s,
+  frequency:     1400 - i * 70,
+  // growth_rate는 API에서 온 값 그대로 사용 (덮어쓰지 않음)
+  ranking_score: 0,
+}));
 
         const extractedItems = data.extracted_nodes.map((e: any, i: number) => ({
           ...e,
@@ -156,14 +156,16 @@ export default function KeywordMap() {
         setBubbleData([...seedItems, ...extractedItems].map(mapApiItem));
 
         setTop10Trends(
-          seedItems.slice(0, 10).map((item: any, i: number) => ({
-            rank:     i + 1,
-            keyword:  item.keyword,
-            change:   `+${120 - i * 5}%`,
-            category: item.category ?? "기타",
-            isSeed:   true,
-          }))
-        );
+  seedItems.slice(0, 10).map((item: any, i: number) => ({
+    rank:     i + 1,
+    keyword:  item.keyword,
+    change:   item.growth_rate != null
+      ? `${item.growth_rate > 0 ? "+" : ""}${item.growth_rate}%`
+      : "-",   // ← DB 값 사용
+    category: item.category ?? "기타",
+    isSeed:   true,
+  }))
+);
 
         setNetworkLinks(
           data.links.map((l: any) => ({
@@ -395,7 +397,7 @@ export default function KeywordMap() {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden h-full flex flex-col">
               <div className="px-6 py-5 border-b border-gray-50 flex-shrink-0">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Trending Now</p>
-                <h2 className="text-lg font-bold text-gray-900">급상승 TOP 10</h2>
+                <h2 className="text-lg font-bold text-gray-900">트렌드 TOP 10</h2>
               </div>
               <div className="divide-y divide-gray-50 flex-1 flex flex-col">
                 {top10Trends.map(item => {

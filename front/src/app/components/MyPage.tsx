@@ -332,6 +332,7 @@ const handleDeleteKeyword = async (keyword: string) => {
         {/* 1. 임시 저장한 사업계획서 */}
         <div className="bg-white rounded-2xl shadow-lg mb-6 overflow-hidden">
           <MyPageButton
+            data-tutorial="saved-bizplan"
             onClick={() => toggleSection('businessPlans')}
             className="w-full p-8 flex items-center justify-between hover:bg-gray-50 transition-colors"
           > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
@@ -413,6 +414,7 @@ const handleDeleteKeyword = async (keyword: string) => {
         {/* 2. 관심 키워드 */}
         <div className="bg-white rounded-2xl shadow-lg mb-6 overflow-hidden">
           <MyPageButton
+            data-tutorial="interest-keywords"
             onClick={() => toggleSection('keywords')}
             className="w-full p-8 flex items-center justify-between hover:bg-gray-50 transition-colors"
           > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
@@ -454,6 +456,7 @@ const handleDeleteKeyword = async (keyword: string) => {
         {/* 3. 저장 (2단계 아코디언) */}
         <div className="bg-white rounded-2xl shadow-lg mb-6 overflow-hidden">
           <MyPageButton
+            data-tutorial="mypage-saved"
             onClick={() => toggleSection('saved')}
             className="w-full p-8 flex items-center justify-between hover:bg-gray-50 transition-colors"
           > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}
@@ -605,6 +608,7 @@ const handleDeleteKeyword = async (keyword: string) => {
         {/* 4. 설정 (2단계 아코디언) */}
         <div className="bg-white rounded-2xl shadow-lg mb-6 overflow-hidden">
           <MyPageButton
+            data-tutorial="mypage-settings"
             onClick={() => toggleSection('settings')}
             className="w-full p-8 flex items-center justify-between hover:bg-gray-50 transition-colors"
           > {/* ★ 기존 구형 button에서 로컬 컴포넌트 MyPageButton으로 치환됨 */}

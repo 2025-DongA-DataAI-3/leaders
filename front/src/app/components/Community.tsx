@@ -185,7 +185,7 @@ function formatTimestamp(dateStr: string): string {
 // 5. 메인 Community 컴포넌트
 // ==========================================
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = '';
 
 export default function Community() {
   const navigate = useNavigate();

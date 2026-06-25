@@ -213,7 +213,7 @@ export default function BusinessPlan() {
   const savedId = searchParams.get('saved');
   if (!savedId) return;
 
-  fetch(`http://localhost:5000/api/business-plan/detail/${savedId}`)
+  fetch(`/api/business-plan/detail/${savedId}`)
     .then(res => res.json())
     .then(data => {
       if (data.plan_id) {
@@ -245,7 +245,7 @@ export default function BusinessPlan() {
     // 그 오염을 막고, keyword-data 응답이 도착하면 트렌드 reason으로 채운다.
     setPlan(prev => ({ ...prev, title: `${keyword} 기반 창업 사업계획서`, summary: '' }));
 
-    fetch(`http://localhost:8000/api/business-plan/keyword-data/${encodeURIComponent(keyword)}`)
+    fetch(`/ai/api/business-plan/keyword-data/${encodeURIComponent(keyword)}`)
     .then(res => res.json())
     .then(data => {
       setKeywordData(data);
@@ -293,7 +293,7 @@ export default function BusinessPlan() {
     formData.append('template', file);
 
     try {
-      const response = await fetch('http://localhost:8000/api/business-plan/parse-template', {
+      const response = await fetch('/ai/api/business-plan/parse-template', {
         method: 'POST',
         body: formData,
       });
@@ -339,7 +339,7 @@ export default function BusinessPlan() {
   const marketAnalysisOverride = location.state?.marketAnalysis || null;
 
   try {
-    const response = await fetch('http://localhost:8000/api/business-plan/generate', {
+    const response = await fetch('/ai/api/business-plan/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -378,7 +378,7 @@ export default function BusinessPlan() {
   const newPlanId = currentSaveId ?? `bp-${timestamp}`;
 
   try {
-    const response = await fetch('http://localhost:5000/api/business-plan/save', {
+    const response = await fetch('/api/business-plan/save', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

@@ -234,7 +234,7 @@ interface PostDetail {
   comments: CommentRow[];
 }
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = '';
 
 /* ==========================================================================
    유틸: 상대시간 포맷

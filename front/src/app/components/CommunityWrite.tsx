@@ -50,7 +50,7 @@ interface PostDetail {
   subcategory: string | null;
 }
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = '';
 
 export default function CommunityWrite() {
   const navigate = useNavigate();

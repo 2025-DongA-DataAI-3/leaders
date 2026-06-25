@@ -140,25 +140,25 @@ export default function MyPage() {
 
     if (user_id) {
       // 사업계획서
-      fetch(`http://localhost:5000/api/business-plan/list/${user_id}`)
+      fetch(`/api/business-plan/list/${user_id}`)
         .then(res => res.json())
         .then(data => setSavedBusinessPlans(Array.isArray(data) ? data : []))
         .catch(() => setSavedBusinessPlans([]));
 
       // 관심 키워드
-      fetch(`http://localhost:5000/api/keywords/${user_id}`)
+      fetch(`/api/keywords/${user_id}`)
         .then(res => res.json())
         .then(data => setSavedKeywords(Array.isArray(data) ? data.map((d: any) => d.keyword_id) : []))
         .catch(() => setSavedKeywords([]));
 
       // ✅ 공고 스크랩 목록 - DB에서 상세 정보 포함하여 조회
-      fetch(`http://localhost:5000/api/announcements/bookmarks?user_id=${user_id}`)
+      fetch(`/api/announcements/bookmarks?user_id=${user_id}`)
         .then(res => res.json())
         .then(data => setSavedPrograms(Array.isArray(data) ? data : []))
         .catch(() => setSavedPrograms([]));
 
       // ✅ 커뮤니티 북마크 목록 - DB에서 조회
-      fetch(`http://localhost:5000/api/posts/bookmarks/${user_id}`)
+      fetch(`/api/posts/bookmarks/${user_id}`)
         .then(res => res.json())
         .then(data => setSavedCommunityPosts(Array.isArray(data) ? data : []))
         .catch(() => setSavedCommunityPosts([]));
@@ -176,7 +176,7 @@ export default function MyPage() {
   const handleUnsaveCommunityPost = async (postId: string) => {
     const user_id = localStorage.getItem('user_id');
     try {
-      await fetch(`http://localhost:5000/api/posts/${postId}/bookmark`, {
+      await fetch(`/api/posts/${postId}/bookmark`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id }),
@@ -213,7 +213,7 @@ export default function MyPage() {
   const handleUnsaveProgram = async (announcementId: string) => {
     const user_id = localStorage.getItem('user_id');
     try {
-      await fetch('http://localhost:5000/api/announcements/bookmarks', {
+      await fetch('/api/announcements/bookmarks', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id, announcement_id: announcementId }),
@@ -228,7 +228,7 @@ export default function MyPage() {
   const handleDeleteBusinessPlan = async (planId: string) => {
     const user_id = localStorage.getItem('user_id');
     try {
-      await fetch(`http://localhost:5000/api/business-plan/${planId}`, {
+      await fetch(`/api/business-plan/${planId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id }),
@@ -261,7 +261,7 @@ export default function MyPage() {
   const handleDeleteAccount = async () => {
     try {
       const user_id = localStorage.getItem("user_id");
-      const res = await fetch('http://localhost:5000/api/auth/delete', {
+      const res = await fetch('/api/auth/delete', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id }),
@@ -283,7 +283,7 @@ export default function MyPage() {
   const handleDeleteKeyword = async (keyword: string) => {
     const user_id = localStorage.getItem('user_id');
     try {
-      await fetch('http://localhost:5000/api/keywords/delete', {
+      await fetch('/api/keywords/delete', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id, keyword }),

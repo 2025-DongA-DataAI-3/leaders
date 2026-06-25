@@ -26,7 +26,7 @@ export default function Signup() {
       return;
     }
     try {
-      const response = await fetch(`http://localhost:5000/api/check-id?userId=${userId}`);
+      const response = await fetch(`/api/check-id?userId=${userId}`);
       const data = await response.json();
       if (data.available) {
         setIdCheckMsg("사용 가능한 아이디입니다 ✅");
@@ -56,7 +56,7 @@ export default function Signup() {
     }
 
     try {
-      const response = await fetch("http://localhost:5000/api/signup", {
+      const response = await fetch("/api/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

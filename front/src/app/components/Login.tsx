@@ -13,7 +13,7 @@ export default function Login() {
       return;
     }
     try {
-      const response = await fetch("http://localhost:5000/api/login", {
+      const response = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, password }),
@@ -39,21 +39,21 @@ export default function Login() {
 
   const handleGoogleLogin = () => {
     const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    const REDIRECT_URI = 'http://localhost:5173/login';
+    const REDIRECT_URI = `${window.location.origin}/login`;
     sessionStorage.setItem('oauth_provider', 'google');
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&scope=email profile&prompt=select_account`;
   };
 
   const handleKakaoLogin = () => {
     const KAKAO_CLIENT_ID = import.meta.env.VITE_KAKAO_CLIENT_ID;
-    const REDIRECT_URI = 'http://localhost:5173/login';
+    const REDIRECT_URI = `${window.location.origin}/login`;
     sessionStorage.setItem('oauth_provider', 'kakao');
     window.location.href = `https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=code&prompt=login`;
   };
 
   const handleNaverLogin = () => {
     const NAVER_CLIENT_ID = import.meta.env.VITE_NAVER_CLIENT_ID;
-    const REDIRECT_URI = 'http://localhost:5173/login';
+    const REDIRECT_URI = `${window.location.origin}/login`;
     const STATE = Math.random().toString(36).substring(2);
     sessionStorage.setItem('naver_state', STATE);
     sessionStorage.setItem('oauth_provider', 'naver');
@@ -70,16 +70,16 @@ export default function Login() {
     const savedNaverState = sessionStorage.getItem('naver_state');
 
     let provider = 'kakao';
-    let endpoint = 'http://localhost:5000/oauth/kakao';
+    let endpoint = '/oauth/kakao';
     let body: any = { code };
 
     if (oauthProvider === 'google') {
       provider = 'google';
-      endpoint = 'http://localhost:5000/oauth/google/redirect';
+      endpoint = '/oauth/google/redirect';
       body = { code };
     } else if (oauthProvider === 'naver' && state === savedNaverState) {
       provider = 'naver';
-      endpoint = 'http://localhost:5000/oauth/naver';
+      endpoint = '/oauth/naver';
       body = { code, state };
     }
 

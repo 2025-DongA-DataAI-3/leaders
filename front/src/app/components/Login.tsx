@@ -25,10 +25,13 @@ export default function Login() {
         localStorage.setItem("user_id", data.user.user_id);
         localStorage.setItem("userName", data.user.nickname);
         const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
-        if (!hasSeenOnboarding) {
-          localStorage.setItem("runTutorialTrigger", "true");
-        }
-        navigate('/');
+          if (hasSeenOnboarding) {
+            navigate('/keyword-map');
+          } else {
+            // 첫 로그인 → 온보딩으로 보내되 튜토리얼 트리거 설정
+            localStorage.setItem("runTutorialTrigger", "true");
+            navigate('/');
+          }
       } else {
         alert(data.message || "로그인 실패! 아이디와 비밀번호를 확인하세요.");
       }
@@ -98,10 +101,13 @@ export default function Login() {
         localStorage.setItem('userName', data.user.nickname);
         localStorage.setItem('user_id', data.user.user_id);
         const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
-        if (!hasSeenOnboarding) {
-          localStorage.setItem("runTutorialTrigger", "true");
-        }
-        navigate('/');
+          if (hasSeenOnboarding) {
+            navigate('/keyword-map');
+          } else {
+            // 첫 로그인 → 온보딩으로 보내되 튜토리얼 트리거 설정
+            localStorage.setItem("runTutorialTrigger", "true");
+            navigate('/');
+          }
       })
       .catch(() => alert('소셜 로그인 실패! 다시 시도해주세요.'));
   }, []);

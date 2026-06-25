@@ -319,9 +319,12 @@ export default function KeywordMap() {
             </div>
             <div style="height:1px;background:#f0f0f0;margin:8px 0;"></div>
           </div>`;
+        
+           const maxRaw = Math.max(...SCORE_ITEMS.map(s => (d.scores as any)[s.key] as number));
+           
         SCORE_ITEMS.forEach(s => {
           const raw = (d.scores as any)[s.key] as number;
-          const pct = Math.min(Math.round(raw * 100), 100);
+          const pct = maxRaw > 0 ? Math.round((raw / maxRaw) * 100) : 0;
           const wtd = (raw * s.weight).toFixed(3);
           html += `
             <div style="margin-bottom:6px;">

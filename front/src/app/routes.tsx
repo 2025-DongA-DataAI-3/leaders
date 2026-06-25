@@ -36,7 +36,10 @@ function StartupSurveyWrapper() {
 // ==========================================
 
 export const router = createBrowserRouter([
-  
+  {
+    path: "/",
+    Component: Onboarding,  // FloatingButton 레이아웃 없이 단독 렌더
+  },
   {
     path: "/login",
     Component: Login,
@@ -45,7 +48,6 @@ export const router = createBrowserRouter([
     path: "/signup",
     Component: Signup,
   },
-  /* 비밀번호 찾기 라우터 */
   {
     path: "/forgot-password",
     Component: ForgotPassword,
@@ -55,17 +57,12 @@ export const router = createBrowserRouter([
     Component: FloatingButton,
     children: [
       {
-        index: true,
-        Component: Onboarding
-      },
-      {
         path: "keyword-map",
         Component: KeywordMap
       },
       {
         path: "startupsurvey",
-        // 위에서 정의한 래퍼 컴포넌트를 라우터에 연결
-        Component: StartupSurveyWrapper 
+        Component: StartupSurveyWrapper
       },
       {
         path: "match-posting",

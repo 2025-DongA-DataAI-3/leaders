@@ -364,17 +364,23 @@ export default function Onboarding() {
           </p>
           <button
             onClick={() => {
+              const userId = localStorage.getItem("user_id");
+              if (!userId) {
+                navigate("/login");
+                return;
+              }
+
+              localStorage.setItem("hasSeenOnboarding", "true");
+
               const runTutorial = localStorage.getItem("runTutorialTrigger");
               if (runTutorial === "true") {
                 localStorage.removeItem("runTutorialTrigger");
-                localStorage.setItem("hasSeenOnboarding", "true");
                 navigate("/keyword-map");
                 setTimeout(() => {
                   window.dispatchEvent(new CustomEvent("startTutorial"));
                 }, 300);
               } else {
-                const userId = localStorage.getItem("user_id");
-                navigate(userId ? "/keyword-map" : "/login");
+                navigate("/keyword-map");
               }
             }}
             style={{

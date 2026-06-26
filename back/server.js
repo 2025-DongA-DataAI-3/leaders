@@ -8,12 +8,27 @@ import announcementsRouter from './src/routes/announcements.js'
 import keywordMapRouter from './src/routes/keywordMap.js'
 import businessPlanRouter from './src/routes/businessPlan.js'
 import keywordsRouter from './src/routes/keyword.js'
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { createProxyMiddleware } from 'http-proxy-middleware';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+// AI 서버 프록시
+app.use('/ai', createProxyMiddleware({
+  target: 'http://localhost:8000',
+  changeOrigin: true,
+  pathRewrite: { '^/ai': '' },
+}));
+
+// 프론트 빌드 정적 파일 서빙
+app.use(express.static(path.join(__dirname, '../front/dist')));
 app.use('/api/posts', postsRouter); //커뮤니티
 app.use('/oauth', authRouter); // 소셜 로그인
 app.use('/api/announcements', announcementsRouter); // 공고 추천
@@ -226,6 +241,11 @@ app.get('/api/startup/fields', async (req, res) => {
     console.error("창업 분야 조회 실패:", error);
     res.status(500).json({ error: "서버 오류" });
   }
+});
+
+// React Router 새로고침 대응
+app.get('/{*path}', (req, res) => {
+  res.sendFile(path.join(__dirname, '../front/dist/index.html'));
 });
 
 const PORT = process.env.SERVER_PORT || 5000;

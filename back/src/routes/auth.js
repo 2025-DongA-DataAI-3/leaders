@@ -52,7 +52,7 @@ router.post('/kakao', async (req, res) => {
         grant_type: 'authorization_code',
         client_id: process.env.KAKAO_CLIENT_ID,
         client_secret: process.env.KAKAO_CLIENT_SECRET,
-        redirect_uri: 'http://localhost:5173/login',
+        redirect_uri: 'https://unvituperatively-cytological-rhona.ngrok-free.dev/login',
         code,
       }),
       { headers: { 'content-type': 'application/x-www-form-urlencoded;charset=utf-8' } }
@@ -113,7 +113,7 @@ router.post('/google/redirect', async (req, res) => {
         grant_type: 'authorization_code',
         client_id: process.env.GOOGLE_CLIENT_ID,
         client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        redirect_uri: 'http://localhost:5173/login',
+        redirect_uri: 'https://unvituperatively-cytological-rhona.ngrok-free.dev/login',
         code,
       }),
       { headers: { 'content-type': 'application/x-www-form-urlencoded' } }

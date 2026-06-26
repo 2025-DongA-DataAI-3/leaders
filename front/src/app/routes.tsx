@@ -1,4 +1,4 @@
-import { createBrowserRouter, useNavigate } from "react-router";
+import { createBrowserRouter, useNavigate, Navigate } from "react-router";
 import FloatingButton from "./components/FloatingButton";
 import Login from "./components/Login";
 import Signup from "./components/Signup";
@@ -26,7 +26,7 @@ function StartupSurveyWrapper() {
     <StartupSurvey
       onComplete={() => {
         alert("진단이 완료되었습니다!");
-        navigate("/"); 
+        navigate("/");
       }}
     />
   );
@@ -38,7 +38,7 @@ function StartupSurveyWrapper() {
 export const router = createBrowserRouter([
   {
     path: "/",
-    Component: Onboarding,  // FloatingButton 레이아웃 없이 단독 렌더
+    Component: Onboarding,  // 신규 회원만 튜토리얼, 아니면 키워드맵으로 리다이렉트
   },
   {
     path: "/login",

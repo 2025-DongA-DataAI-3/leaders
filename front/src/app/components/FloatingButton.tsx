@@ -489,9 +489,10 @@ export default function Root() {
       return;
     }
 
-    // 1단계 스텝 가드: 로그인 직후 트리거가 잡혔을 때 처음 가입자와 기존 미진단자 분기 실행
+    // 1단계 스텝 가드
     if (runTutorialTrigger === "true") {
-      // 트리거 제거하지 않고 온보딩 페이지(/)에 머물게만 함
+      localStorage.removeItem("runTutorialTrigger");  // 트리거 제거
+      setShowTutorialConfirm(true);                    // 튜토리얼 확인 팝업 바로 띄우기
       return;
     }
 

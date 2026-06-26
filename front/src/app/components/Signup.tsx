@@ -75,9 +75,7 @@ export default function Signup() {
           alert(data.message || "회원가입이 완벽하게 대성공했습니다! 🎉");
           // 신규 가입자 튜토리얼 트리거 세팅
           localStorage.setItem("runTutorialTrigger", "true");
-          localStorage.removeItem("hasSeenOnboarding");
-          localStorage.removeItem("hasCompletedSurvey");
-          navigate('/login');
+          navigate("/login");
       } else {
         alert(data.message || "회원가입 실패! 이미 있는 아이디인지 확인하세요 😭");
       }

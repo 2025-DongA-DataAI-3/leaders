@@ -1,17 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { TrendingUp,  TrendingDown, ChevronRight, ArrowLeft, Zap, ExternalLink, Newspaper, Heart } from "lucide-react";
+import { TrendingUp, TrendingDown, ChevronRight, ArrowLeft, Zap, ExternalLink, Newspaper, Heart } from "lucide-react";
 import * as d3 from "d3";
 import { useNavigate } from "react-router-dom";
 
-
-interface SeedAnalysis {
-  reason:       string;
-  startupItems: string[];
-  market:       string;
-  govLinks:     { label: string; url: string }[];
-  headlines:    { title: string; url: string }[];
-  category:     string;
-}
 
 interface ScoreBreakdown {
   interest: number; growth: number; evidence: number;
@@ -28,6 +19,7 @@ interface BubbleData {
   headlines: { title: string; url: string }[];
   marketAnalysis: string; scores: ScoreBreakdown;
   newsArticles: NewsArticle[]; govSupports: string[];
+  isTop10: boolean;  // 추가
 }
 interface TrendRanking {
   rank: number; keyword: string; change: string; category: string; isSeed: boolean;
@@ -36,7 +28,7 @@ interface LinkData {
   source: string; target: string; similarity: number; linked_seed_count: number;
 }
 
-function mapApiItem(item: any): BubbleData {
+function mapApiItem(item: any, size: number, isTop10: boolean): BubbleData {
   const kw     = item.keyword as string;
   const isSeed = item.type === "seed";
 
@@ -46,11 +38,10 @@ function mapApiItem(item: any): BubbleData {
     frequency:  item.frequency   ?? item.article_count ?? 0,
     changeRate: item.growth_rate ?? 0,
     x: 50, y: 50,
-    size: isSeed
-      ? Math.max(35, Math.min(65, (item.frequency ?? 0) / 20))
-      : Math.max(25, Math.min(45, (item.article_count ?? 0) * 2 + 40)),
+    size,
     category:     item.category ?? "기타",
     isSeed,
+    isTop10,      // ← 여기 누락되어 있었음
     reason:       item.reason ?? "",
     startupItems: item.startup_item_types ?? [],
     market:       "",
@@ -127,7 +118,7 @@ export default function KeywordMap() {
   const [top10Trends,    setTop10Trends]    = useState<TrendRanking[]>([]);
   const [bubbleData,     setBubbleData]     = useState<BubbleData[]>([]);
   const [networkLinks,   setNetworkLinks]   = useState<LinkData[]>([]);
-  const [viewMode,       setViewMode]       = useState<"ranking" | "bubbles">("ranking");
+  const [viewMode,       setViewMode]       = useState<"ranking" | "bubbles">("bubbles");
   const [selectedBubble, setSelectedBubble] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [zoomLevel, setZoomLevel] = useState(100);
@@ -139,33 +130,63 @@ export default function KeywordMap() {
     fetch("/api/keyword-map")
       .then(res => res.json())
       .then(data => {
-        const seedItems = data.seed_nodes.map((s: any, i: number) => ({
-  ...s,
-  frequency:     1400 - i * 70,
-  // growth_rate는 API에서 온 값 그대로 사용 (덮어쓰지 않음)
-  ranking_score: 0,
-}));
-
-        const extractedItems = data.extracted_nodes.map((e: any, i: number) => ({
-          ...e,
-          frequency:     e.article_count    ?? 0,
-          growth_rate:   0,
-          ranking_score: e.max_keybert_score ?? 0,
+        const seedItems = data.seed_nodes.map((s: any) => ({
+          ...s,
+          ranking_score: s.ranking_score ?? 0,
         }));
 
-        setBubbleData([...seedItems, ...extractedItems].map(mapApiItem));
+        const extractedItems = data.extracted_nodes.map((e: any) => ({
+          ...e,
+          frequency:   e.article_count ?? 0,
+          growth_rate: 0,
+          ranking_score: e.ranking_score ?? 0,
+        }));
 
+        // ranking_score 기준 정렬 → TOP5만 크기 차등
+        const sorted   = [...seedItems].sort((a, b) => b.ranking_score - a.ranking_score);
+        const top10Set = new Set(sorted.slice(0, 10).map((s: any) => s.keyword));
+        
+        const TOP5_SIZES: Record<number, number> = {
+          1: 105,
+          2: 95,
+          3: 85,
+          4: 75,
+          5: 65,
+          6: 60,
+          7: 55,
+          8: 50,
+          9: 45,
+          10: 40,
+        };
+
+        const toNode = (item: any) => {
+          const rank = sorted.findIndex((s: any) => s.keyword === item.keyword); // 0-based
+          const isTop10 = top10Set.has(item.keyword);
+
+          const size = rank >= 0 && rank < 10
+            ? TOP5_SIZES[rank + 1]   // TOP5_SIZES에 1~10 다 있으니 그대로 사용
+            : 36;                     // 나머지는 36px 고정
+
+          return mapApiItem(item, size, isTop10);
+        };
+
+        setBubbleData([
+          ...seedItems.map(toNode),
+          ...extractedItems.map(toNode),
+        ]);
+
+        // TOP10 랭킹 리스트: sorted 기준
         setTop10Trends(
-  seedItems.slice(0, 10).map((item: any, i: number) => ({
-    rank:     i + 1,
-    keyword:  item.keyword,
-    change:   item.growth_rate != null
-      ? `${item.growth_rate > 0 ? "+" : ""}${item.growth_rate}%`
-      : "-",   // ← DB 값 사용
-    category: item.category ?? "기타",
-    isSeed:   true,
-  }))
-);
+          sorted.slice(0, 10).map((item: any, i: number) => ({
+            rank:     i + 1,
+            keyword:  item.keyword,
+            change:   item.growth_rate != null
+              ? `${item.growth_rate > 0 ? "+" : ""}${item.growth_rate}%`
+              : "-",
+            category: item.category ?? "기타",
+            isSeed:   true,
+          }))
+        );
 
         setNetworkLinks(
           data.links.map((l: any) => ({
@@ -177,9 +198,9 @@ export default function KeywordMap() {
         );
       })
       .catch(err => console.error("키워드맵 API 호출 실패:", err));
-  },
-   []);
-  // 튜토리얼 viewMode 이벤트 리스너 — 별도 useEffect
+  }, []);
+
+  // 튜토리얼 viewMode 이벤트 리스너
   useEffect(() => {
     const handler = (e: Event) => {
       const mode = (e as CustomEvent).detail as "ranking" | "bubbles";
@@ -213,14 +234,13 @@ export default function KeywordMap() {
     }));
 
     const links = networkLinks
-  .filter(l => filteredIds.has(l.source as string) && filteredIds.has(l.target as string))
-  .map(l => ({
-    source:            l.source as string,
-    target:            l.target as string,
-    linked_seed_count: l.linked_seed_count,
-  }));
+      .filter(l => filteredIds.has(l.source as string) && filteredIds.has(l.target as string))
+      .map(l => ({
+        source:            l.source as string,
+        target:            l.target as string,
+        linked_seed_count: l.linked_seed_count,
+      }));
 
-    // 줌
     const zoomG = svg.append("g");
     const zoom = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 3])
@@ -230,10 +250,8 @@ export default function KeywordMap() {
       });
 
     svg.call(zoom);
-    // 초기 100% 기준으로 시작
     svg.call(zoom.transform, d3.zoomIdentity.scale(0.86));
 
-    // simulation
     const simulation = d3.forceSimulation(nodes as d3.SimulationNodeDatum[])
       .force("link", d3.forceLink(links)
         .id((d: any) => d.id)
@@ -243,14 +261,13 @@ export default function KeywordMap() {
         .strength((d: any) => d.isSeed ? -800 : -300))
       .force("center", d3.forceCenter(width / 2, height / 2))
       .force("collide", d3.forceCollide()
-        .radius((d: any) => d.isSeed ? 58 : 42)
+        .radius((d: any) => d.size + 6)  // size 기반으로 충돌 반경
         .strength(1))
       .force("x", d3.forceX(width / 2).strength(0.06))
       .force("y", d3.forceY(height / 2).strength(0.06));
 
     simulation.alphaDecay(0.02);
 
-    // simulation 끝나면 위치 완전 고정 (드래그 불가)
     simulation.on("end", () => {
       nodes.forEach((d: any) => {
         d.fx = d.x;
@@ -258,7 +275,6 @@ export default function KeywordMap() {
       });
     });
 
-    // 선 먼저(뒤), 노드 나중(앞)
     const linkG = zoomG.append("g");
     const nodeG = zoomG.append("g");
 
@@ -268,7 +284,6 @@ export default function KeywordMap() {
       .attr("stroke-opacity", 0.6)
       .attr("stroke-width", 1.5);
 
-    // 툴팁 HTML
     const tooltipEl = document.createElement("div");
     tooltipEl.style.cssText = `
       position:fixed;background:white;border:1px solid #e2e8f0;
@@ -283,7 +298,6 @@ export default function KeywordMap() {
       .data(nodes).join("g")
       .style("cursor", "pointer")
       .style("opacity", 1)
-      // 드래그 제거 — 클릭만 허용
       .on("click", (_, d: any) => {
         setSelectedBubble(prev => {
           const next = prev === d.id ? null : d.id;
@@ -296,10 +310,10 @@ export default function KeywordMap() {
           });
           return next;
         });
-      
-       if (d.id) {
+
+        if (d.id) {
           setMarketCache(cache => {
-            if (cache[d.id]) return cache; // 이미 있으면 호출 안 함
+            if (cache[d.id]) return cache;
             setMarketLoading(true);
             fetch(`/api/keyword-map/market-analysis/${encodeURIComponent(d.id)}?reason=${encodeURIComponent(d.reason ?? "")}`)
               .then(res => res.json())
@@ -319,9 +333,9 @@ export default function KeywordMap() {
             </div>
             <div style="height:1px;background:#f0f0f0;margin:8px 0;"></div>
           </div>`;
-        
-           const maxRaw = Math.max(...SCORE_ITEMS.map(s => (d.scores as any)[s.key] as number));
-           
+
+        const maxRaw = Math.max(...SCORE_ITEMS.map(s => (d.scores as any)[s.key] as number));
+
         SCORE_ITEMS.forEach(s => {
           const raw = (d.scores as any)[s.key] as number;
           const pct = maxRaw > 0 ? Math.round((raw / maxRaw) * 100) : 0;
@@ -347,30 +361,42 @@ export default function KeywordMap() {
         tooltipEl.style.top  = `${Math.max(event.clientY - 100, 8)}px`;
       })
       .on("mouseleave", () => { tooltipEl.style.display = "none"; });
-    // ← drag 완전 제거
 
     nodeGroup.append("circle")
-      .attr("r", (d: any) => d.isSeed ? 52 : 36)
+      .attr("r", (d: any) => d.size)           // ← size 기반
       .attr("fill", (d: any) => getCategoryColor(d.category))
       .attr("opacity", 0.9)
       .attr("stroke", "white")
       .attr("stroke-width", 2.5);
 
+    // 키워드 텍스트
     nodeGroup.append("text")
       .text((d: any) => d.keyword)
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "middle")
       .style("fill", "white")
-      .style("font-size", (d: any) => d.isSeed ? "12px" : "10px")
+      .style("font-size", (d: any) => {
+        if (d.size >= 90) return "16px";
+        if (d.size >= 70) return "14px";
+        if (d.size >= 50) return "13px";
+        if (d.size >= 38) return "11px";
+        return "10px";
+      })
       .style("font-weight", "700")
       .style("pointer-events", "none");
 
+    // 변화율 텍스트
     nodeGroup.append("text")
-      .text((d: any) => `${d.changeRate > 0 ? "+" : ""}${d.changeRate}%`)
-      .attr("y", (d: any) => d.isSeed ? 16 : 13)
+      .text((d: any) => d.isTop10 ? `${d.changeRate > 0 ? "+" : ""}${d.changeRate}%` : "")
+      .attr("y", (d: any) => d.size * 0.3)
       .attr("text-anchor", "middle")
       .style("fill", "rgba(255,255,255,0.9)")
-      .style("font-size", (d: any) => d.isSeed ? "10px" : "9px")
+      .style("font-size", (d: any) => {
+        if (d.size >= 90) return "13px";
+        if (d.size >= 70) return "12px";
+        if (d.size >= 50) return "11px";
+        return "10px";
+      })
       .style("pointer-events", "none");
 
     simulation.on("tick", () => {
@@ -402,7 +428,7 @@ export default function KeywordMap() {
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Trending Now</p>
                 <h2 className="text-lg font-bold text-gray-900">트렌드 TOP 10</h2>
                 <span className="text-xs text-gray-400 text-center leading-relaxed">
-                  "검색관심도 · 검색증가율 · 뉴스근거량 · 문서관련도 · 최신성"   5가지 지표를 종합한 트렌드 점수 기준으로 선정됩니다.
+                  "검색관심도 · 검색증가율 · 뉴스근거량 · 문서관련도 · 최신성" 5가지 지표를 종합한 트렌드 점수 기준으로 선정됩니다.
                 </span>
               </div>
               <div className="divide-y divide-gray-50 flex-1 flex flex-col">
@@ -426,53 +452,37 @@ export default function KeywordMap() {
                             {item.keyword}
                           </span>
                         </div>
-                        {/* 게이지 바 제거 — 카테고리 텍스트만 */}
                         <span className="text-sm mt-0.5 block" style={{ color: isTop3 ? barColors[item.rank - 1] : "#9CA3AF" }}>
                           {isTop3 ? catShort : item.category}
                         </span>
                       </div>
                       <div className="flex items-center gap-0.5 flex-shrink-0">
-                      {(() => {
-                        const isPositive = item.change.startsWith("+");
-                        const isNeutral  = item.change === "-";
-                        return (
-                          <>
-                            {isNeutral
-                              ? <span className="text-xs text-gray-300">-</span>
-                              : isPositive
-                                ? <TrendingUp   className={`w-3 h-3 ${isTop3 ? "text-red-400" : "text-red-300"}`} />
-                                : <TrendingDown className={`w-3 h-3 ${isTop3 ? "text-blue-400" : "text-blue-300"}`} />
-                            }
-                            <span className={`font-bold ${isTop3 ? "text-base" : "text-sm"} ${
-                              isNeutral ? "text-gray-300" : isPositive ? "text-red-400" : "text-blue-400"
-                            }`}>
-                              {item.change}
-                            </span>
-                          </>
-                        );
-                      })()}
-                    </div>
+                        {(() => {
+                          const isPositive = item.change.startsWith("+");
+                          const isNeutral  = item.change === "-";
+                          return (
+                            <>
+                              {isNeutral
+                                ? <span className="text-xs text-gray-300">-</span>
+                                : isPositive
+                                  ? <TrendingUp   className={`w-3 h-3 ${isTop3 ? "text-red-400" : "text-red-300"}`} />
+                                  : <TrendingDown className={`w-3 h-3 ${isTop3 ? "text-blue-400" : "text-blue-300"}`} />
+                              }
+                              <span className={`font-bold ${isTop3 ? "text-base" : "text-sm"} ${
+                                isNeutral ? "text-gray-300" : isPositive ? "text-red-400" : "text-blue-400"
+                              }`}>
+                                {item.change}
+                              </span>
+                            </>
+                          );
+                        })()}
+                      </div>
                     </div>
                   );
                 })}
               </div>
-                {viewMode === "ranking" && (
-                  <div className="flex justify-center px-6 py-5 border-t border-gray-50 flex-shrink-0">
-                      <button
-                      onClick={() => setViewMode("bubbles")}
-                      data-tutorial="bubble-map-btn"
-                      className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition-opacity"
-                      style={{ background: "#00C9A7" }}
-                    >
-                      <Zap className="w-4 h-4" />
-                      버블맵으로 보기
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                )}
-              </div>
             </div>
-          
+          </div>
 
           {/* 버블맵 */}
           {viewMode === "bubbles" && (
@@ -480,31 +490,22 @@ export default function KeywordMap() {
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <div className="flex items-center justify-between mb-5">
                   <p className="text-sm text-gray-400">버블에 마우스를 올리면 트렌드 점수, 클릭하면 상세 분석을 확인할 수 있어요. 휠로 확대/축소 가능합니다.</p>
-                  <button onClick={() => setViewMode("ranking")}
-                    data-tutorial="ranking-btn"
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white hover:opacity-90 shadow-sm"
-                    style={{ background: "#00C9A7" }}>
-                    <ArrowLeft className="w-4 h-4" />
-                    랭킹보기
-                  </button>
                 </div>
 
-                  <div data-tutorial="keyword-map"
-                    className="relative rounded-xl border border-gray-100 overflow-hidden"
-                    style={{
-                      background: "linear-gradient(135deg, #F8FFFE 0%, #F0F9FF 100%)",
-                      height: selectedBubble ? "300px" : "750px",
-                      position: "relative",
-                      zIndex: 1,
-                    }}>
+                <div data-tutorial="keyword-map"
+                  className="relative rounded-xl border border-gray-100 overflow-hidden"
+                  style={{
+                    background: "linear-gradient(135deg, #F8FFFE 0%, #F0F9FF 100%)",
+                    height: selectedBubble ? "300px" : "750px",
+                    position: "relative",
+                    zIndex: 1,
+                  }}>
                   <svg ref={svgRef} className="w-full h-full" />
 
-                  {/* 줌 레벨 표시 — 추가 */}
                   <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm rounded-lg px-2 py-1 shadow-sm pointer-events-none">
                     <span className="text-xs font-semibold text-gray-500">{zoomLevel}%</span>
                   </div>
 
-                  {/* 범례 — 기존 그대로 */}
                   <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-2 shadow-sm pointer-events-none">
                     <p className="text-xs text-gray-500 mb-2 font-bold">분야별 색상</p>
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs font-medium text-gray-600">
@@ -628,7 +629,6 @@ export default function KeywordMap() {
                         ) : <p className="text-sm text-gray-400">관련 뉴스 없음</p>}
                       </SectionCard>
 
-                      {/* 사업계획서 버튼 — 작고 가운데 */}
                       <div className="flex justify-center mt-1">
                         <button
                           onClick={() => navigate("/business-plan", {

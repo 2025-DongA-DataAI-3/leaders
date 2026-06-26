@@ -4,6 +4,90 @@ import pool from '../db.js';
 const router = express.Router();
 
 // ==========================================
+// 7. 커뮤니티 통계 (전체 게시글, 이번 주 활동, 활성 회원)
+// GET /api/posts/stats/summary
+// ==========================================
+router.get('/stats/summary', async (req, res) => {
+  try {
+    const [[{ total }]] = await pool.query('SELECT COUNT(*) AS total FROM posts');
+ 
+    const [[{ weekly }]] = await pool.query(
+      `SELECT COUNT(*) AS weekly FROM posts WHERE created_at >= NOW() - INTERVAL 7 DAY`
+    );
+ 
+    const [[{ active_users }]] = await pool.query(
+      `SELECT COUNT(DISTINCT user_id) AS active_users FROM posts
+       WHERE created_at >= NOW() - INTERVAL 30 DAY`
+    );
+ 
+    res.json({
+      total,
+      weekly,
+      active_users,
+    });
+  } catch (err) {
+    console.error('통계 조회 에러:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ==========================================
+// 6. (보너스) 내가 북마크한 게시글 목록 조회
+// GET /api/posts/bookmarks/:user_id
+// ==========================================
+router.get('/bookmarks/:user_id', async (req, res) => {
+  const { user_id } = req.params;
+
+  try {
+    const [rows] = await pool.query(`
+      SELECT p.post_id, p.title, p.content, p.created_at,
+             pk.majorcategory,
+             u.nickname AS author
+      FROM post_bookmarks pb
+      JOIN posts p ON pb.post_id = p.post_id
+      JOIN users u ON p.user_id = u.user_id
+      LEFT JOIN post_keywords pk ON p.post_keyword_id = pk.post_keyword_id
+      WHERE pb.user_id = ?
+      ORDER BY pb.created_at DESC
+    `, [user_id]);
+
+    res.json(rows);
+  } catch (err) {
+    console.error('북마크 목록 조회 에러:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ==========================================
+// 8. 내가 쓴 글 목록
+// GET /api/posts/my/:user_id
+// ==========================================
+router.get('/my/:user_id', async (req, res) => {
+  const { user_id } = req.params;
+ 
+  try {
+    const [rows] = await pool.query(`
+      SELECT p.post_id, p.user_id, u.nickname AS author, p.title, p.content,
+             p.view_count, p.created_at, p.updated_at,
+             pk.post_keyword_id, pk.majorcategory,
+             (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.post_id) AS comment_count
+      FROM posts p
+      JOIN users u ON p.user_id = u.user_id
+      LEFT JOIN post_keywords pk ON p.post_keyword_id = pk.post_keyword_id
+      WHERE p.user_id = ?
+      ORDER BY p.created_at DESC
+    `, [user_id]);
+ 
+    res.json(rows);
+  } catch (err) {
+    console.error('내 글 목록 조회 에러:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
+
+
+
+// ==========================================
 // 1. 게시글 목록 조회 (카테고리 필터 + 검색)
 // GET /api/posts?majorcategory=창업 분야&subcategory=AI/기술창업&search=검색어
 // ==========================================
@@ -43,28 +127,37 @@ router.get('/', async (req, res) => {
 });
 
 // ==========================================
-// 8. 내가 쓴 글 목록
-// GET /api/posts/my/:user_id
+// 3. 게시글 작성
+// POST /api/posts
+// body: { user_id, title, content, post_keyword_id }
 // ==========================================
-router.get('/my/:user_id', async (req, res) => {
-  const { user_id } = req.params;
- 
+router.post('/', async (req, res) => {
+  const { user_id, title, content, post_keyword_id } = req.body;
+
+  if (!user_id || !title || !content) {
+    return res.status(400).json({ message: 'user_id, title, content는 필수입니다.' });
+  }
+
   try {
-    const [rows] = await pool.query(`
-      SELECT p.post_id, p.user_id, u.nickname AS author, p.title, p.content,
-             p.view_count, p.created_at, p.updated_at,
-             pk.post_keyword_id, pk.majorcategory,
-             (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.post_id) AS comment_count
-      FROM posts p
-      JOIN users u ON p.user_id = u.user_id
-      LEFT JOIN post_keywords pk ON p.post_keyword_id = pk.post_keyword_id
-      WHERE p.user_id = ?
-      ORDER BY p.created_at DESC
-    `, [user_id]);
- 
-    res.json(rows);
+    const [result] = await pool.query(
+      `INSERT INTO posts (post_id, user_id, title, content, post_keyword_id, view_count)
+       VALUES (UUID(), ?, ?, ?, ?, 0)`,
+      [user_id, title, content, post_keyword_id || null]
+    );
+
+    // 방금 생성된 post_id 조회 (UUID()로 생성했으므로 다시 조회)
+    const [rows] = await pool.query(
+      `SELECT post_id FROM posts WHERE user_id = ? ORDER BY created_at DESC LIMIT 1`,
+      [user_id]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: '게시글이 작성되었습니다.',
+      post_id: rows[0]?.post_id,
+    });
   } catch (err) {
-    console.error('내 글 목록 조회 에러:', err);
+    console.error('게시글 작성 에러:', err);
     res.status(500).json({ message: err.message });
   }
 });
@@ -113,43 +206,6 @@ router.get('/:post_id', async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 });
-
-// ==========================================
-// 3. 게시글 작성
-// POST /api/posts
-// body: { user_id, title, content, post_keyword_id }
-// ==========================================
-router.post('/', async (req, res) => {
-  const { user_id, title, content, post_keyword_id } = req.body;
-
-  if (!user_id || !title || !content) {
-    return res.status(400).json({ message: 'user_id, title, content는 필수입니다.' });
-  }
-
-  try {
-    const [result] = await pool.query(
-      `INSERT INTO posts (post_id, user_id, title, content, post_keyword_id, view_count)
-       VALUES (UUID(), ?, ?, ?, ?, 0)`,
-      [user_id, title, content, post_keyword_id || null]
-    );
-
-    // 방금 생성된 post_id 조회 (UUID()로 생성했으므로 다시 조회)
-    const [rows] = await pool.query(
-      `SELECT post_id FROM posts WHERE user_id = ? ORDER BY created_at DESC LIMIT 1`,
-      [user_id]
-    );
-
-    res.status(201).json({
-      success: true,
-      message: '게시글이 작성되었습니다.',
-      post_id: rows[0]?.post_id,
-    });
-  } catch (err) {
-    console.error('게시글 작성 에러:', err);
-    res.status(500).json({ message: err.message });
-  }
-});
-
 // ==========================================
 // 4. 댓글 작성
 // POST /api/posts/:post_id/comments
@@ -239,61 +295,6 @@ router.post('/:post_id/bookmark', async (req, res) => {
     }
   } catch (err) {
     console.error('북마크 토글 에러:', err);
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// ==========================================
-// 6. (보너스) 내가 북마크한 게시글 목록 조회
-// GET /api/posts/bookmarks/:user_id
-// ==========================================
-router.get('/bookmarks/:user_id', async (req, res) => {
-  const { user_id } = req.params;
-
-  try {
-    const [rows] = await pool.query(`
-      SELECT p.post_id, p.title, p.content, p.created_at,
-             pk.majorcategory, pk.subcategory,
-             u.nickname AS author
-      FROM post_bookmarks pb
-      JOIN posts p ON pb.post_id = p.post_id
-      JOIN users u ON p.user_id = u.user_id
-      LEFT JOIN post_keywords pk ON p.post_keyword_id = pk.post_keyword_id
-      WHERE pb.user_id = ?
-      ORDER BY pb.created_at DESC
-    `, [user_id]);
-
-    res.json(rows);
-  } catch (err) {
-    console.error('북마크 목록 조회 에러:', err);
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// ==========================================
-// 7. 커뮤니티 통계 (전체 게시글, 이번 주 활동, 활성 회원)
-// GET /api/posts/stats/summary
-// ==========================================
-router.get('/stats/summary', async (req, res) => {
-  try {
-    const [[{ total }]] = await pool.query('SELECT COUNT(*) AS total FROM posts');
- 
-    const [[{ weekly }]] = await pool.query(
-      `SELECT COUNT(*) AS weekly FROM posts WHERE created_at >= NOW() - INTERVAL 7 DAY`
-    );
- 
-    const [[{ active_users }]] = await pool.query(
-      `SELECT COUNT(DISTINCT user_id) AS active_users FROM posts
-       WHERE created_at >= NOW() - INTERVAL 30 DAY`
-    );
- 
-    res.json({
-      total,
-      weekly,
-      active_users,
-    });
-  } catch (err) {
-    console.error('통계 조회 에러:', err);
     res.status(500).json({ message: err.message });
   }
 });

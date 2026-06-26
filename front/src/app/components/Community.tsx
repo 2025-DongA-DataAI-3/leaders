@@ -266,9 +266,13 @@ const sections: SidebarSection[] = [{
     const params = new URLSearchParams();
 
     if (selectedCategory === '전체') {
-    // 대분류만 필터 (해당 섹션 전체)
-    params.set('majorcategory', selectedSection);
+      // 섹션 전체 (majorcategory 필터 없이 전체 조회하려면 이 줄도 제거 가능)
+      // 현재 '전체'는 커뮤니티 섹션 전체를 의미하므로 필터 안 보냄
+    } else {
+      // ✅ 특정 카테고리 선택 시 majorcategory로 필터
+      params.set('majorcategory', selectedCategory);
     }
+
     if (searchQuery) {
       params.set('search', searchQuery);
     }

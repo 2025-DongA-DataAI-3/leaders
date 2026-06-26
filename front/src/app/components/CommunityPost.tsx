@@ -444,12 +444,12 @@ export default function CommunityPost() {
                     <span className="text-sm text-gray-400">•</span>
                     <span className="text-sm text-gray-500">{formatTimestamp(post.created_at)}</span>
                   </div>
-                  {post.subcategory && (
+                  {post.majorcategory && (
                     <span
                       className="text-xs px-2 py-0.5 rounded-full mt-1 inline-block"
                       style={{ background: '#E0F7F3', color: '#00A88E' }}
                     >
-                      {post.subcategory}
+                      {post.majorcategory}
                     </span>
                   )}
                 </div>

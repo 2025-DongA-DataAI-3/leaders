@@ -9,12 +9,12 @@ const router = express.Router();
 // ==========================================
 router.get('/', async (req, res) => {
   try {
-    const { majorcategory, subcategory, search } = req.query;
+    const { majorcategory, search } = req.query;
 
     let query = `
       SELECT p.post_id, p.user_id, u.nickname AS author, p.title, p.content, 
              p.view_count, p.created_at, p.updated_at,
-             pk.majorcategory, pk.subcategory,
+             pk.majorcategory,
              (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.post_id) AS comment_count
       FROM posts p
       JOIN users u ON p.user_id = u.user_id
@@ -26,10 +26,6 @@ router.get('/', async (req, res) => {
     if (majorcategory && majorcategory !== '전체') {
       query += ' AND pk.majorcategory = ?';
       params.push(majorcategory);
-    }
-    if (subcategory && subcategory !== '전체') {
-      query += ' AND pk.subcategory = ?';
-      params.push(subcategory);
     }
     if (search) {
       query += ' AND (p.title LIKE ? OR p.content LIKE ?)';
@@ -57,7 +53,7 @@ router.get('/my/:user_id', async (req, res) => {
     const [rows] = await pool.query(`
       SELECT p.post_id, p.user_id, u.nickname AS author, p.title, p.content,
              p.view_count, p.created_at, p.updated_at,
-             pk.post_keyword_id, pk.majorcategory, pk.subcategory,
+             pk.post_keyword_id, pk.majorcategory,
              (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.post_id) AS comment_count
       FROM posts p
       JOIN users u ON p.user_id = u.user_id
@@ -88,7 +84,7 @@ router.get('/:post_id', async (req, res) => {
     const [posts] = await pool.query(`
       SELECT p.post_id, p.user_id, u.nickname AS author, p.title, p.content,
              p.view_count, p.created_at, p.updated_at,
-             pk.post_keyword_id, pk.majorcategory, pk.subcategory
+             pk.post_keyword_id, pk.majorcategory
       FROM posts p
       JOIN users u ON p.user_id = u.user_id
       LEFT JOIN post_keywords pk ON p.post_keyword_id = pk.post_keyword_id

@@ -218,26 +218,20 @@ export default function Community() {
       .then(data => {
         const grouped: Record<string, { id: string; label: string }[]> = {};
 
-        data.forEach((row: { majorcategory: string; subcategory: string }) => {
-          if (!grouped[row.majorcategory]) {
-            grouped[row.majorcategory] = [{ id: '전체', label: '전체' }];
-          }
-          grouped[row.majorcategory].push({
-            id: row.subcategory,
-            label: row.subcategory,
-          });
-        });
+        data.forEach((row: { post_keyword_id: string; majorcategory: string }) => {
+  grouped['커뮤니티'] = grouped['커뮤니티'] ?? [{ id: '전체', label: '전체' }];
+  grouped['커뮤니티'].push({
+    id: row.majorcategory,
+    label: row.majorcategory,
+  });
+});
 
-        const sections: SidebarSection[] = Object.entries(grouped).map(([key, items]) => ({
-          id: key,
-          label: key,
-          icon: key === '창업 분야'
-            ? <span>🗂</span>
-            : key === '창업 소통'
-            ? <span>💬</span>
-            : <span>⚙️</span>,
-          items,
-        }));
+const sections: SidebarSection[] = [{
+  id: '커뮤니티',
+  label: '커뮤니티',
+  icon: <span>💬</span>,
+  items: grouped['커뮤니티'] ?? [],
+}];
 
         setSidebarSections(sections);
         if (sections.length > 0) {
@@ -274,9 +268,6 @@ export default function Community() {
     if (selectedCategory === '전체') {
     // 대분류만 필터 (해당 섹션 전체)
     params.set('majorcategory', selectedSection);
-    } else {
-    params.set('majorcategory', selectedSection);
-    params.set('subcategory', selectedCategory);
     }
     if (searchQuery) {
       params.set('search', searchQuery);
@@ -453,12 +444,12 @@ export default function Community() {
                             <span className="text-sm text-gray-400">·</span>
                             <span className="text-sm text-gray-500">{formatTimestamp(post.created_at)}</span>
                           </div>
-                          {post.subcategory && (
+                          {post.majorcategory && (
                             <span
                               className="inline-block mt-1 text-xs px-2 py-1 rounded-full"
                               style={{ background: '#E0F7F3', color: '#00C9A7' }}
                             >
-                              {post.subcategory}
+                              {post.majorcategory}
                             </span>
                           )}
                         </div>

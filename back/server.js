@@ -218,10 +218,8 @@ app.post('/api/survey', async (req, res) => {
 app.get('/api/community/categories', async (req, res) => {
   try {
     const [rows] = await pool.query(
-    `SELECT post_keyword_id, majorcategory, subcategory FROM post_keywords 
-    ORDER BY majorcategory, 
-    CASE WHEN subcategory = '기타' THEN 1 ELSE 0 END,
-    subcategory`
+    `SELECT post_keyword_id, majorcategory FROM post_keywords 
+ORDER BY majorcategory`
   );
     res.json(rows);
   } catch (err) {

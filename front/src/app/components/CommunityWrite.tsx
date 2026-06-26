@@ -131,13 +131,11 @@ export default function CommunityWrite() {
   // 대분류 목록 (중복 제거)
   const majorCategories = Array.from(new Set(keywords.map(k => k.majorcategory)));
 
-  // 선택된 대분류에 속한 소분류 목록
-  const subCategories = keywords.filter(k => k.majorcategory === selectedMajor);
-
   const handleSelectMajor = (major: string) => {
-    setSelectedMajor(major);
-    setSelectedKeywordId(''); // 대분류 바뀌면 소분류 선택 초기화
-  };
+  setSelectedMajor(major);
+  const found = keywords.find(k => k.majorcategory === major);
+  setSelectedKeywordId(found?.post_keyword_id ?? '');
+};
 
   const handleSubmit = async () => {
     if (!userId) {
@@ -146,10 +144,6 @@ export default function CommunityWrite() {
     }
     if (!selectedMajor) {
       alert('카테고리(대분류)를 선택해주세요.');
-      return;
-    }
-    if (!selectedKeywordId) {
-      alert('카테고리(소분류)를 선택해주세요.');
       return;
     }
     if (!title.trim()) {
@@ -276,31 +270,6 @@ export default function CommunityWrite() {
               ))}
             </div>
           </div>
-
-          {/* 2단계: 소분류 선택 (대분류 선택 시에만 표시) */}
-          {selectedMajor && (
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                세부 카테고리 <span className="text-red-500">*</span>
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {subCategories.map((sub) => (
-                  <CommButton
-                    key={sub.post_keyword_id}
-                    onClick={() => setSelectedKeywordId(sub.post_keyword_id)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                      selectedKeywordId === sub.post_keyword_id
-                        ? 'bg-[#00A88E] text-white shadow-md'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    {sub.subcategory}
-                  </CommButton>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* 제목 입력 */}
           <div className="mb-6">
             <label className="block text-sm font-semibold text-gray-700 mb-3">

@@ -338,11 +338,11 @@ export default function Community() {
 
   return (
     <div className="min-h-screen py-8 px-6 bg-[#F5FFFE]">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-8xl mx-auto">
 
-        <div className="mb-6">
+        <div className="mb-8">
           <h1 className="mb-1 text-2xl font-bold text-gray-900">커뮤니티</h1>
-          <p className="text-gray-500" style={{ fontSize: '14px' }}>
+          <p className="text-gray-900">
             창업자들과 경험을 공유하고 소통하세요
           </p>
         </div>

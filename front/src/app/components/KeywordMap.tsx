@@ -22,7 +22,7 @@ interface BubbleData {
   isTop10: boolean;  // 추가
 }
 interface TrendRanking {
-  rank: number; keyword: string; change: string; category: string; isSeed: boolean;
+  rank: number; keyword: string; change: string; category: string; isSeed: boolean; score: number;
 }
 interface LinkData {
   source: string; target: string; similarity: number; linked_seed_count: number;
@@ -78,9 +78,11 @@ const CATEGORY_COLORS: Record<string, string> = {
 const getCategoryColor = (cat: string) => CATEGORY_COLORS[cat] ?? "#94A3B8";
 
 const SCORE_ITEMS = [
-  { key: "interest",  label: "검색 관심도", weight: 0.30, color: "#00C9A7" },
-  { key: "growth",    label: "검색 증가율", weight: 0.20, color: "#6366F1" },
-  { key: "evidence",  label: "뉴스 근거량", weight: 0.20, color: "#F59E0B" },
+  { key: "interest",  label: "검색 관심도", weight: 0.20, color: "#00C9A7" },
+  { key: "growth",    label: "검색 증가율", weight: 0.30, color: "#6366F1" },
+  { key: "evidence",  label: "뉴스 근거량", weight: 0.25, color: "#F59E0B" },
+  { key: "relevance", label: "문서 관련도", weight: 0.15, color: "#EC4899" },
+  { key: "recency",   label: "최신성",      weight: 0.10, color: "#84CC16" },
 ] as const;
 
 const SECTION_META = [
@@ -185,6 +187,7 @@ export default function KeywordMap() {
               : "-",
             category: item.category ?? "기타",
             isSeed:   true,
+            score:    Number(item.ranking_score) || 0
           }))
         );
 
@@ -334,22 +337,24 @@ export default function KeywordMap() {
             <div style="height:1px;background:#f0f0f0;margin:8px 0;"></div>
           </div>`;
 
-        const maxRaw = Math.max(...SCORE_ITEMS.map(s => (d.scores as any)[s.key] as number));
+        const wtdValues = SCORE_ITEMS.map(s => (d.scores as any)[s.key] as number * s.weight);
+        const maxWtd = Math.max(...wtdValues);
 
-        SCORE_ITEMS.forEach(s => {
+        SCORE_ITEMS.forEach((s, i) => {
           const raw = (d.scores as any)[s.key] as number;
-          const pct = maxRaw > 0 ? Math.round((raw / maxRaw) * 100) : 0;
-          const wtd = (raw * s.weight).toFixed(3);
+          const wtd = raw * s.weight;
+          const pct = maxWtd > 0 ? Math.round((wtd / maxWtd) * 100) : 0;
+          const wtdStr = wtd.toFixed(3);
           html += `
             <div style="margin-bottom:6px;">
               <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:2px;">
                 <span style="color:#555;">${s.label} <span style="color:#bbb;">×${s.weight}</span></span>
-                <span style="font-weight:700;color:${s.color};">${wtd}</span>
+                <span style="font-weight:700;color:${s.color};">${wtdStr}</span>
               </div>
               <div style="height:3px;background:#f0f0f0;border-radius:2px;overflow:hidden;">
                 <div style="height:100%;width:${pct}%;background:${s.color};border-radius:2px;"></div>
               </div>
-            </div>`;
+  </div>`;
         });
         tooltipEl.innerHTML = html;
         tooltipEl.style.display = "block";
@@ -428,7 +433,7 @@ export default function KeywordMap() {
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Trending Now</p>
                 <h2 className="text-lg font-bold text-gray-900">트렌드 TOP 10</h2>
                 <span className="text-xs text-gray-400 text-center leading-relaxed">
-                  "5가지 지표를 종합한 트렌드 점수를 기준으로 <br/>매주 월요일 선정됩니다."
+                  "일주일 단위로 증감량을 비교해 <br/>매주 월요일 Top 10 키워드가 선정됩니다."
                 </span>
               </div>
               <div className="divide-y divide-gray-50 flex-1 flex flex-col">
@@ -456,26 +461,12 @@ export default function KeywordMap() {
                           {isTop3 ? catShort : item.category}
                         </span>
                       </div>
-                      <div className="flex items-center gap-0.5 flex-shrink-0">
-                        {(() => {
-                          const isPositive = item.change.startsWith("+");
-                          const isNeutral  = item.change === "-";
-                          return (
-                            <>
-                              {isNeutral
-                                ? <span className="text-xs text-gray-300">-</span>
-                                : isPositive
-                                  ? <TrendingUp   className={`w-3 h-3 ${isTop3 ? "text-red-400" : "text-red-300"}`} />
-                                  : <TrendingDown className={`w-3 h-3 ${isTop3 ? "text-blue-400" : "text-blue-300"}`} />
-                              }
-                              <span className={`font-bold ${isTop3 ? "text-base" : "text-sm"} ${
-                                isNeutral ? "text-gray-300" : isPositive ? "text-red-400" : "text-blue-400"
-                              }`}>
-                                {item.change}
-                              </span>
-                            </>
-                          );
-                        })()}
+                       
+                       <div className="flex items-center gap-0.5 flex-shrink-0"> 
+                        {/* 최종 점수 렌더링 */}
+                        {/* <span className={`font-bold ${isTop3 ? "text-base" : "text-sm"} text-gray-500`}> */}
+                          {/* {typeof item.score === "number" ? item.score.toFixed(2) : "-"} */}
+                        {/* </span> */}
                       </div>
                     </div>
                   );

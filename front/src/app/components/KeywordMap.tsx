@@ -417,7 +417,7 @@ export default function KeywordMap() {
       <div className="max-w-8xl mx-auto">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">창업 트렌드 버블맵</h1>
-          <p className="text-sm text-gray-500 mt-1">실시간 뉴스 기반 키워드 트렌드를 분석해 보세요.</p>
+          <p className="text-sm text-gray-500 mt-1"> "검색관심도 · 검색증가율 · 뉴스근거량 · 문서관련도 · 최신성" 5가지 지표를 종합해 선정된 창업 트렌드를 분석해보세요."</p>
         </div>
 
         <div className="flex gap-6 items-stretch">
@@ -428,7 +428,7 @@ export default function KeywordMap() {
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-1">Trending Now</p>
                 <h2 className="text-lg font-bold text-gray-900">트렌드 TOP 10</h2>
                 <span className="text-xs text-gray-400 text-center leading-relaxed">
-                  "검색관심도 · 검색증가율 · 뉴스근거량 · 문서관련도 · 최신성" 5가지 지표를 종합한 트렌드 점수 기준으로 선정됩니다.
+                  "5가지 지표를 종합한 트렌드 점수를 기준으로 <br/>매주 월요일 선정됩니다."
                 </span>
               </div>
               <div className="divide-y divide-gray-50 flex-1 flex flex-col">

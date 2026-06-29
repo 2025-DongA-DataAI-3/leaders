@@ -231,10 +231,9 @@ ORDER BY majorcategory`
 app.get('/api/startup/fields', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      "SELECT DISTINCT subcategory FROM post_keywords WHERE majorcategory = ?",
-      ["창업 분야"]
+      "SELECT keyword FROM keyword_details ORDER BY analysis_id"
     );
-    res.json(rows.map(r => r.subcategory));
+    res.json(rows.map(r => r.keyword));
   } catch (error) {
     console.error("창업 분야 조회 실패:", error);
     res.status(500).json({ error: "서버 오류" });

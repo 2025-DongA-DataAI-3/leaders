@@ -142,13 +142,13 @@ GPT 키워드 분류 (GPT-5.4-mini → KEEP / REVIEW / DROP)
 
 ## 👥 팀원 역할
 
-| 이름 | 역할 |
-|------|------|
-| 채유미 (팀장) | PM · Frontend |
-| 이상원 (부팀장) | Full-stack |
-| 김은혜 | DB · Backend |
-| 유희영 | Frontend |
-| 임주은 | AI · Data Processing |
+| 이름 | 역할 | 담당 업무 |
+|------|------|-----------|
+| 채유미 (팀장) | PM · Frontend | 서비스기획 및 프로젝트 일정 관리 <br> 전체 파이프라인 설계 <br> D3.js 포스 시뮬레이션 기반 버블맵 시각화 구현 |
+| 이상원 (부팀장) | Full-stack | FastAPI 기반 AI 서버 구축 및 GPT 연동 <br> 사업계획서 자동 생성 · AI 챗봇 파이프라인 구현 <br> Node.js/Express 백엔드 API 라우터 구현 |
+| 김은혜 | DB · Backend | MySQL 데이터베이스 설계 및 ERD 작성 <br> 소셜 로그인 OAuth 라우팅 및 인증 흐름 처리 <br> 공고 추천 API 및 DB 연동 구현 |
+| 유희영 | Frontend | React 페이지 컴포넌트 구현 <br> UI/UX 디자인 및 Tailwind CSS 스타일링 <br> 반응형 레이아웃 구성 및 사용자 인터랙션 처리 |
+| 임주은 | AI · Data Processing | 키워드 추출 모델 구성 및 분류 파이프라인 구현 <br> 트렌드 랭킹 점수 산출 알고리즘 설계 <br> 뉴스 데이터 수집 및 전처리 파이프라인 구축 |
 
 <br>
 

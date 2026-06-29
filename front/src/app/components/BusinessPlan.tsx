@@ -51,6 +51,8 @@ interface SavedPlan {
   templateName: string;
 }
 
+const AI_URL = import.meta.env.VITE_AI_URL || '';
+
 const defaultSections: Section[] = [
   { key: 'cover',              label: '표지',           placeholder: '' },
   { key: 'overview',           label: '아이템 개요',     sub: '핵심 한 줄 요약',           number: '0',   placeholder: '무엇을, 누구를 위해, 어떻게 해결하는지 핵심을 한두 문장으로 요약하세요.' },
@@ -293,10 +295,13 @@ export default function BusinessPlan() {
     formData.append('template', file);
 
     try {
-      const response = await fetch('/ai/api/business-plan/parse-template', {
+      const response = await fetch(`${AI_URL}/api/business-plan/parse-template`, {
         method: 'POST',
         body: formData,
       });
+
+      console.log('응답 status:', response.status);
+      console.log('응답 headers:', [...response.headers.entries()]);
 
       if (!response.ok) {
         const err = await response.json();
@@ -327,19 +332,15 @@ export default function BusinessPlan() {
     setTemplateName('기본 양식');
   };
 
-  const generateBusinessPlan = async () => {
+const generateBusinessPlan = async () => {
   setIsGenerating(true);
   setPlan(prev => ({ ...prev, content: {} }));
 
   const keyword = location.state?.keyword ?? null;
-  // KeywordMap.tsx에서 "이 키워드로 사업계획서 쓰기" 클릭 시 함께 넘어오는
-  // 최신 시장분석(marketCache 값). FastAPI가 keyword_details.market_analysis
-  // (DB 구버전)보다 이 값을 우선 사용한다. 키워드 없이 직접 진입했거나
-  // 캐시가 비어 있었던 경우엔 빈 문자열/undefined이므로 백엔드가 자동으로 DB값에 폴백한다.
   const marketAnalysisOverride = location.state?.marketAnalysis || null;
 
   try {
-    const response = await fetch('/ai/api/business-plan/generate', {
+    const response = await fetch(`${AI_URL}/api/business-plan/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -351,13 +352,28 @@ export default function BusinessPlan() {
       }),
     });
 
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.detail ?? 'AI 생성 실패');
+    if (!response.ok) throw new Error(`서버 오류: ${response.status}`);
+
+    const reader = response.body!.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
     }
 
-    const data = await response.json();
-    setPlan(prev => ({ ...prev, content: data.content }));
+    const resultIndex = buffer.lastIndexOf("RESULT:");
+    if (resultIndex === -1) {
+      const errorIndex = buffer.lastIndexOf("ERROR:");
+      throw new Error(errorIndex !== -1 ? buffer.slice(errorIndex + 6) : "생성 실패");
+    }
+
+    const jsonStr = buffer.slice(resultIndex + 7);
+    const data = JSON.parse(jsonStr);
+    setPlan(prev => ({ ...prev, content: data }));
+
   } catch (err) {
     console.error('사업계획서 생성 실패:', err);
     alert('AI 생성 중 오류가 발생했습니다. FastAPI 서버가 실행 중인지 확인해주세요.');

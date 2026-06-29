@@ -8,6 +8,7 @@ import json
 import pdfplumber
 import mysql.connector
 
+from fastapi.responses import StreamingResponse
 from .section_guides import get_guide_for_section
 
 load_dotenv()
@@ -88,8 +89,8 @@ def extract_pdf_text(pdf_path: str) -> str:
 
 def extract_hwp_text(hwp_path: str) -> str:
     try:
-        f = olefile.OleFileIO(hwp_path)
-        data = f.openstream('PrvText').read()
+        with olefile.OleFileIO(hwp_path) as f:
+            data = f.openstream('PrvText').read()
         return data.decode('utf-16-le', errors='ignore')
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"HWP 파싱 실패: {str(e)}")
@@ -325,10 +326,6 @@ async def generate_business_plan(req: BusinessPlanGenerateRequest):
         if req.keyword else ""
     )
 
-    # 디버그용: GPT에 실제로 전달되는 키워드맵 트렌드 데이터를 콘솔에 출력.
-    # 생성된 사업계획서의 수치(예: 시장규모 "1조원")가 DB 원문에서 온 것인지
-    # GPT가 새로 만든 것인지 의심될 때, 이 로그의 "3) 시장 현황" 항목과
-    # 실제 생성 결과를 직접 대조해서 확인할 수 있다.
     print("=" * 60)
     print(f"[business-plan/generate] keyword={req.keyword!r}")
     print(keyword_context or "(키워드 없음 또는 DB에 데이터 없음)")
@@ -360,17 +357,26 @@ async def generate_business_plan(req: BusinessPlanGenerateRequest):
 {section_list}
 """
 
-    try:
-        completion = await client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            temperature=0.6,
-            response_format={"type": "json_object"},
-        )
-        content = json.loads(completion.choices[0].message.content)
-        return {"content": content}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"AI 생성 중 오류: {str(e)}")
+    async def stream():
+        try:
+            stream_resp = await client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=0.6,
+                response_format={"type": "json_object"},
+                stream=True,
+            )
+            full_text = ""
+            async for chunk in stream_resp:
+                delta = chunk.choices[0].delta.content or ""
+                full_text += delta
+                yield b" "  # ngrok 연결 유지
+
+            yield f"RESULT:{full_text}".encode()
+        except Exception as e:
+            yield f"ERROR:{str(e)}".encode()
+
+    return StreamingResponse(stream(), media_type="text/plain")

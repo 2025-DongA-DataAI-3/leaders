@@ -9,7 +9,11 @@ app = FastAPI(title="THELEADERS AI Server")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite 프론트 주소
+    allow_origins=[
+        "http://localhost:5173",
+        "https://unvituperatively-cytological-rhona.ngrok-free.dev",
+        "https://defectless-nonconjunctively-cesar.ngrok-free.dev",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

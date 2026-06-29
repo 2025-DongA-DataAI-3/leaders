@@ -25,6 +25,13 @@ app.use('/ai', createProxyMiddleware({
   target: 'http://localhost:8000',
   changeOrigin: true,
   pathRewrite: { '^/ai': '' },
+  on: {
+    proxyReq: (proxyReq) => {
+      proxyReq.setTimeout(300000); // 5분
+    },
+  },
+  timeout: 300000,       // 5분
+  proxyTimeout: 300000,  // 5분
 }));
 
 // 프론트 빌드 정적 파일 서빙

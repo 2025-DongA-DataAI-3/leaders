@@ -105,8 +105,10 @@ GPT 키워드 분류 (GPT-5.4-mini → KEEP / REVIEW / DROP)
 <br>
 
 ## 📊 ER 다이어그램
+<img width="570" height="811" alt="image" src="https://github.com/user-attachments/assets/39b42505-da6d-4ffd-b531-d6f2dc6015c3" />
+<img width="600" height="904" alt="image" src="https://github.com/user-attachments/assets/45b53c23-9d9f-4ddb-a235-3c2d02fe89cf" />
 
-> 이미지 첨부 예정
+
 
 <br>
 
